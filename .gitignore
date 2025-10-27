@@ -1,0 +1,74 @@
+# Environment files
+.env
+.env.backup
+.env.production
+.env.local
+.env.*.local
+
+# Dependencies
+/node_modules
+/vendor
+
+# Build artifacts
+/public/build
+/public/hot
+
+# IDE & Editor files
+/.fleet
+/.idea
+/.nova
+/.vscode
+/.zed
+.phpactor.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Laravel specific
+/bootstrap/cache/*.php
+!/bootstrap/cache/.gitkeep
+/storage/*.key
+/storage/pail
+/public/storage
+
+# Storage directories (logs, cache, sessions, uploads)
+/storage/logs/*
+!/storage/logs/.gitkeep
+/storage/framework/cache/*
+!/storage/framework/cache/.gitkeep
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitkeep
+/storage/framework/testing/*
+!/storage/framework/testing/.gitkeep
+/storage/framework/views/*
+!/storage/framework/views/.gitkeep
+/storage/app/private/*
+!/storage/app/private/.gitkeep
+/storage/app/public/*
+!/storage/app/public/.gitkeep
+
+# Database files (SQLite)
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+/database/*.sqlite
+/database/*.sqlite3
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+.phpunit.result.cache
+/.phpunit.cache
+/coverage
+
+# Deployment
+/auth.json
+Homestead.json
+Homestead.yaml
+.vagrant
+docker-compose.override.yml
