@@ -9,8 +9,8 @@
 /node_modules
 /vendor
 
-# Build artifacts
-/public/build
+# Build artifacts (keeping /public/build for deployment)
+# /public/build - commented out so build assets are committed
 /public/hot
 
 # IDE & Editor files
