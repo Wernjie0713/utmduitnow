@@ -2,7 +2,7 @@
 import * as React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 
-import { Slot } from '@/components/animate-ui/primitives/animate/slot';
+import { Slot } from '@/Components/animate-ui/primitives/animate/slot';
 import { useIsInView } from '@/hooks/use-is-in-view';
 import { getStrictContext } from '@/lib/get-strict-context';
 

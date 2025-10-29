@@ -5,7 +5,7 @@ import {
   HoverCardTrigger as HoverCardTriggerPrimitive,
   HoverCardPortal as HoverCardPortalPrimitive,
   HoverCardContent as HoverCardContentPrimitive,
-} from '@/components/animate-ui/primitives/radix/hover-card';
+} from '@/Components/animate-ui/primitives/radix/hover-card';
 import { cn } from '@/lib/utils';
 
 function HoverCard(props) {

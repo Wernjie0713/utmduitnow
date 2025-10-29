@@ -3,7 +3,7 @@ import * as React from 'react';
 import { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui';
 import { AnimatePresence, motion } from 'motion/react';
 
-import { Highlight, HighlightItem } from '@/components/animate-ui/primitives/effects/highlight';
+import { Highlight, HighlightItem } from '@/Components/animate-ui/primitives/effects/highlight';
 import { getStrictContext } from '@/lib/get-strict-context';
 import { useControlledState } from '@/hooks/use-controlled-state';
 import { useDataState } from '@/hooks/use-data-state';

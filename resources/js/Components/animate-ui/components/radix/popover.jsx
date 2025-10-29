@@ -6,7 +6,7 @@ import {
   PopoverContent as PopoverContentPrimitive,
   PopoverPortal as PopoverPortalPrimitive,
   PopoverClose as PopoverClosePrimitive,
-} from '@/components/animate-ui/primitives/radix/popover';
+} from '@/Components/animate-ui/primitives/radix/popover';
 import { cn } from '@/lib/utils';
 
 function Popover(props) {

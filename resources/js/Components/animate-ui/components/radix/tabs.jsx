@@ -8,7 +8,7 @@ import {
   TabsContents as TabsContentsPrimitive,
   TabsHighlight as TabsHighlightPrimitive,
   TabsHighlightItem as TabsHighlightItemPrimitive,
-} from '@/components/animate-ui/primitives/radix/tabs';
+} from '@/Components/animate-ui/primitives/radix/tabs';
 import { cn } from '@/lib/utils';
 
 function Tabs({

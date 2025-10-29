@@ -4,7 +4,7 @@ import {
   Switch as SwitchPrimitive,
   SwitchThumb as SwitchThumbPrimitive,
   SwitchIcon as SwitchIconPrimitive,
-} from '@/components/animate-ui/primitives/radix/switch';
+} from '@/Components/animate-ui/primitives/radix/switch';
 import { cn } from '@/lib/utils';
 
 function Switch({

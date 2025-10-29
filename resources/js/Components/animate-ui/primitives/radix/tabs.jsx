@@ -3,10 +3,10 @@ import * as React from 'react';
 import { Tabs as TabsPrimitive } from 'radix-ui';
 import { motion, AnimatePresence } from 'motion/react';
 
-import { Highlight, HighlightItem } from '@/components/animate-ui/primitives/effects/highlight';
+import { Highlight, HighlightItem } from '@/Components/animate-ui/primitives/effects/highlight';
 import { getStrictContext } from '@/lib/get-strict-context';
 import { useControlledState } from '@/hooks/use-controlled-state';
-import { AutoHeight } from '@/components/animate-ui/primitives/effects/auto-height';
+import { AutoHeight } from '@/Components/animate-ui/primitives/effects/auto-height';
 
 const [TabsProvider, useTabs] =
   getStrictContext('TabsContext');

@@ -5,7 +5,7 @@ import {
   RadioGroup as RadioGroupPrimitive,
   RadioGroupItem as RadioGroupItemPrimitive,
   RadioGroupIndicator as RadioGroupIndicatorPrimitive,
-} from '@/components/animate-ui/primitives/radix/radio-group';
+} from '@/Components/animate-ui/primitives/radix/radio-group';
 import { cn } from '@/lib/utils';
 
 function RadioGroup({

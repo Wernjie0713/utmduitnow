@@ -3,7 +3,7 @@ import * as React from 'react';
 import {
   Checkbox as CheckboxPrimitive,
   CheckboxIndicator as CheckboxIndicatorPrimitive,
-} from '@/components/animate-ui/primitives/radix/checkbox';
+} from '@/Components/animate-ui/primitives/radix/checkbox';
 import { cn } from '@/lib/utils';
 import { cva } from 'class-variance-authority';
 

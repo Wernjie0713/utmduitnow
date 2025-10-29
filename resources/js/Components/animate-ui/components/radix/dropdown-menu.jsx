@@ -18,7 +18,7 @@ import {
   DropdownMenuSubContent as DropdownMenuSubContentPrimitive,
   DropdownMenuSubTrigger as DropdownMenuSubTriggerPrimitive,
   DropdownMenuTrigger as DropdownMenuTriggerPrimitive,
-} from '@/components/animate-ui/primitives/radix/dropdown-menu';
+} from '@/Components/animate-ui/primitives/radix/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { CheckIcon, ChevronRightIcon, CircleIcon } from 'lucide-react';
 

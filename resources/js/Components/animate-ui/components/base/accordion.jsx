@@ -7,7 +7,7 @@ import {
   AccordionHeader as AccordionHeaderPrimitive,
   AccordionTrigger as AccordionTriggerPrimitive,
   AccordionPanel as AccordionPanelPrimitive,
-} from '@/components/animate-ui/primitives/base/accordion';
+} from '@/Components/animate-ui/primitives/base/accordion';
 import { cn } from '@/lib/utils';
 
 function Accordion(props) {

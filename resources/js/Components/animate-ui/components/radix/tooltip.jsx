@@ -7,7 +7,7 @@ import {
   TooltipContent as TooltipContentPrimitive,
   TooltipArrow as TooltipArrowPrimitive,
   TooltipPortal as TooltipPortalPrimitive,
-} from '@/components/animate-ui/primitives/radix/tooltip';
+} from '@/Components/animate-ui/primitives/radix/tooltip';
 import { cn } from '@/lib/utils';
 
 function TooltipProvider({

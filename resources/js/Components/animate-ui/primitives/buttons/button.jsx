@@ -2,7 +2,7 @@
 import * as React from 'react';
 import { motion } from 'motion/react';
 
-import { Slot } from '@/components/animate-ui/primitives/animate/slot';
+import { Slot } from '@/Components/animate-ui/primitives/animate/slot';
 
 function Button({
   hoverScale = 1.05,

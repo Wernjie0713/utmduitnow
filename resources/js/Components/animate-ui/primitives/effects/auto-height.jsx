@@ -3,7 +3,7 @@ import * as React from 'react';
 import { motion } from 'motion/react';
 
 import { useAutoHeight } from '@/hooks/use-auto-height';
-import { Slot } from '@/components/animate-ui/primitives/animate/slot';
+import { Slot } from '@/Components/animate-ui/primitives/animate/slot';
 
 function AutoHeight({
   children,

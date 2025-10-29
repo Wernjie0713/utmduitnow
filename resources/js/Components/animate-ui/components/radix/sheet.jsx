@@ -11,7 +11,7 @@ import {
   SheetFooter as SheetFooterPrimitive,
   SheetTitle as SheetTitlePrimitive,
   SheetDescription as SheetDescriptionPrimitive,
-} from '@/components/animate-ui/primitives/radix/sheet';
+} from '@/Components/animate-ui/primitives/radix/sheet';
 import { cn } from '@/lib/utils';
 import { XIcon } from 'lucide-react';
 

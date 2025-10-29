@@ -12,8 +12,8 @@ import {
   AlertDialogOverlay as AlertDialogOverlayPrimitive,
   AlertDialogAction as AlertDialogActionPrimitive,
   AlertDialogCancel as AlertDialogCancelPrimitive,
-} from '@/components/animate-ui/primitives/radix/alert-dialog';
-import { buttonVariants } from '@/components/animate-ui/primitives/buttons/button';
+} from '@/Components/animate-ui/primitives/radix/alert-dialog';
+import { buttonVariants } from '@/Components/animate-ui/primitives/buttons/button';
 import { cn } from '@/lib/utils';
 
 function AlertDialog(props) {
