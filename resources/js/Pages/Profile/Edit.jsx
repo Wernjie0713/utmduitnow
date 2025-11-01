@@ -5,10 +5,11 @@ import UpdatePasswordForm from './Partials/UpdatePasswordForm';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm';
 import UpdateAvatarForm from './Partials/UpdateAvatarForm';
 import UpdateStudentInformationForm from './Partials/UpdateStudentInformationForm';
+import CompetitionAnnouncementModal from '@/Components/CompetitionAnnouncementModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
 import { useState, useEffect } from 'react';
 
-export default function Edit({ auth, mustVerifyEmail, status, faculties }) {
+export default function Edit({ auth, mustVerifyEmail, status, faculties, showCompetitionAnnouncement = false }) {
     const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
     useEffect(() => {
@@ -30,6 +31,11 @@ export default function Edit({ auth, mustVerifyEmail, status, faculties }) {
             }
         >
             <Head title="Profile" />
+
+            {/* Competition Announcement Modal */}
+            <CompetitionAnnouncementModal 
+                show={showCompetitionAnnouncement && !showWelcomeModal}
+            />
 
             {/* Welcome Modal for Google OAuth Users */}
             <Dialog open={showWelcomeModal} onOpenChange={setShowWelcomeModal}>

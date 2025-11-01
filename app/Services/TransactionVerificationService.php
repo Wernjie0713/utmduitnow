@@ -331,11 +331,7 @@ class TransactionVerificationService
     {
         try {
             $transactionDate = Carbon::parse($date);
-            $now = Carbon::now();
-
-            // Get the current week (Monday to Sunday)
-            $currentWeekStart = $now->copy()->startOfWeek(Carbon::MONDAY);
-            $currentWeekEnd = $now->copy()->endOfWeek(Carbon::SUNDAY);
+            $now = Carbon::now('Asia/Kuala_Lumpur');
 
             // Check if transaction date is in the future
             if ($transactionDate->isFuture()) {
@@ -345,14 +341,42 @@ class TransactionVerificationService
                 ];
             }
 
-            // Check if transaction is from the current week (Monday to Sunday)
-            $isCurrentWeek = $transactionDate->between($currentWeekStart, $currentWeekEnd);
-
-            if (!$isCurrentWeek) {
+            // Check if the competition has ended
+            if (\App\Helpers\CompetitionWeekHelper::hasCompetitionEnded()) {
+                $endDateString = \App\Helpers\CompetitionWeekHelper::getCompetitionEndDateString();
                 return [
                     'valid' => false,
-                    'reason' => 'Only receipts from the current week (Monday to Sunday) are accepted. Current week: ' . 
-                                $currentWeekStart->format('d/m/Y') . ' - ' . $currentWeekEnd->format('d/m/Y') . '.'
+                    'reason' => 'The competition has ended on ' . $endDateString . '. No more receipts can be submitted.'
+                ];
+            }
+
+            // Check if transaction date is after competition end date
+            if (!\App\Helpers\CompetitionWeekHelper::isWithinCompetitionPeriod($transactionDate)) {
+                $endDateString = \App\Helpers\CompetitionWeekHelper::getCompetitionEndDateString();
+                return [
+                    'valid' => false,
+                    'reason' => 'Only receipts dated before ' . $endDateString . ' are accepted. The competition has ended.'
+                ];
+            }
+
+            // Get the current competition week boundaries
+            $boundaries = \App\Helpers\CompetitionWeekHelper::getCurrentWeekBoundaries();
+
+            if ($boundaries === null) {
+                return [
+                    'valid' => false,
+                    'reason' => 'The competition has not started yet. Competition starts on November 1, 2025.'
+                ];
+            }
+
+            // Check if transaction is from the current competition week
+            $isCurrentWeek = $transactionDate->between($boundaries['start'], $boundaries['end']);
+
+            if (!$isCurrentWeek) {
+                $weekRangeString = \App\Helpers\CompetitionWeekHelper::getWeekRangeString();
+                return [
+                    'valid' => false,
+                    'reason' => 'Only receipts from the current competition week are accepted. ' . $weekRangeString . '.'
                 ];
             }
 

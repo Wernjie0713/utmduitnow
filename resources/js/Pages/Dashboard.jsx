@@ -6,9 +6,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/animate-ui/components/buttons/button';
 import UserAvatar from '@/Components/UserAvatar';
+import CompetitionAnnouncementModal from '@/Components/CompetitionAnnouncementModal';
 import { Trophy, Medal, Award, Upload, CheckCircle, Clock, XCircle, TrendingUp, ListOrdered } from 'lucide-react';
 
-export default function Dashboard({ auth, stats, leaderboards }) {
+export default function Dashboard({ auth, stats, leaderboards, showCompetitionAnnouncement = false }) {
     const getRankIcon = (rank) => {
         switch (rank) {
             case 1:
@@ -142,6 +143,11 @@ export default function Dashboard({ auth, stats, leaderboards }) {
             }
         >
             <Head title="Dashboard" />
+
+            {/* Competition Announcement Modal */}
+            <CompetitionAnnouncementModal 
+                show={showCompetitionAnnouncement}
+            />
 
             <div className="p-6 space-y-6">
                 {/* Personal Stats Cards */}

@@ -3,22 +3,29 @@
 namespace App\Services;
 
 use App\Models\Transaction;
+use App\Helpers\CompetitionWeekHelper;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class LeaderboardService
 {
     /**
-     * Get weekly leaderboard (current week: Monday - Sunday)
+     * Get weekly leaderboard (current competition week)
+     * Week 1: Nov 1-9, 2025 (9 days)
+     * Week 2+: Monday - Sunday (7 days)
      * 
      * @return \Illuminate\Support\Collection
      */
     public function getWeeklyLeaderboard()
     {
-        $startOfWeek = Carbon::now()->startOfWeek(); // Monday
-        $endOfWeek = Carbon::now()->endOfWeek(); // Sunday
+        $boundaries = CompetitionWeekHelper::getCurrentWeekBoundaries();
+        
+        if ($boundaries === null) {
+            // Competition hasn't started yet, return empty collection
+            return collect([]);
+        }
 
-        return $this->getLeaderboard('weekly', $startOfWeek, $endOfWeek);
+        return $this->getLeaderboard('weekly', $boundaries['start'], $boundaries['end']);
     }
 
     /**

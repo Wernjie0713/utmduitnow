@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\LeaderboardService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
@@ -66,7 +67,45 @@ class DashboardController extends Controller
                 'monthly' => $monthlyData,
                 'allTime' => $allTimeData,
             ],
+            'showCompetitionAnnouncement' => $this->shouldShowCompetitionAnnouncement($user),
         ]);
+    }
+
+    /**
+     * Check if the competition announcement modal should be shown
+     * Only show to users who:
+     * 1. Haven't seen it yet (has_seen_competition_announcement = false)
+     * 2. Created their account before or on Nov 1, 2025 (were affected by the data cleanup)
+     */
+    private function shouldShowCompetitionAnnouncement($user): bool
+    {
+        // If user has already seen the announcement, don't show it
+        if ($user->has_seen_competition_announcement) {
+            return false;
+        }
+
+        // Only show to users created on or before Nov 1, 2025
+        // New users after Nov 1 don't need to see this announcement
+        $announcementCutoffDate = Carbon::parse('2025-11-01 23:59:59', 'Asia/Kuala_Lumpur');
+        
+        return $user->created_at->lte($announcementCutoffDate);
+    }
+
+    /**
+     * Mark that the user has acknowledged the competition announcement
+     */
+    public function acknowledgeAnnouncement(Request $request)
+    {
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+        
+        $user->update([
+            'has_seen_competition_announcement' => true,
+        ]);
+
+        // Return Inertia redirect instead of JSON
+        // This will refresh the page and the modal won't show anymore
+        return redirect()->back()->with('success', 'Announcement acknowledged successfully.');
     }
     
 }

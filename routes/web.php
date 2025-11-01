@@ -28,6 +28,9 @@ Route::middleware('auth')->group(function () {
     
     // Student information update
     Route::patch('/profile/student', [ProfileController::class, 'updateStudent'])->name('profile.update.student');
+    
+    // Competition announcement acknowledgment
+    Route::post('/competition/acknowledge-announcement', [DashboardController::class, 'acknowledgeAnnouncement'])->name('competition.acknowledge-announcement');
 });
 
 // Student Routes (Authenticated)

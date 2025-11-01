@@ -8,6 +8,7 @@ use App\Models\Transaction;
 use App\Models\Faculty;
 use App\Services\LeaderboardService;
 use App\Services\AnalyticsService;
+use App\Helpers\CompetitionWeekHelper;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
@@ -100,10 +101,16 @@ class AdminDashboardController extends Controller
 
         // Apply period filter
         if ($period === 'weekly') {
-            $query->whereBetween('approved_at', [
-                now()->startOfWeek(),
-                now()->endOfWeek()
-            ]);
+            $boundaries = CompetitionWeekHelper::getCurrentWeekBoundaries();
+            if ($boundaries !== null) {
+                $query->whereBetween('approved_at', [
+                    $boundaries['start'],
+                    $boundaries['end']
+                ]);
+            } else {
+                // Competition hasn't started, return no results
+                $query->whereRaw('1 = 0');
+            }
         } elseif ($period === 'monthly') {
             $query->whereMonth('approved_at', now()->month)
                   ->whereYear('approved_at', now()->year);

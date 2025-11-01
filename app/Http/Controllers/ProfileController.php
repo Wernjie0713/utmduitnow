@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
+use Carbon\Carbon;
 
 class ProfileController extends Controller
 {
@@ -24,12 +25,34 @@ class ProfileController extends Controller
     public function edit(Request $request): Response
     {
         $faculties = Faculty::all();
+        $user = $request->user();
         
         return Inertia::render('Profile/Edit', [
-            'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
+            'mustVerifyEmail' => $user instanceof MustVerifyEmail,
             'status' => session('status'),
             'faculties' => $faculties,
+            'showCompetitionAnnouncement' => $this->shouldShowCompetitionAnnouncement($user),
         ]);
+    }
+
+    /**
+     * Check if the competition announcement modal should be shown
+     * Only show to users who:
+     * 1. Haven't seen it yet (has_seen_competition_announcement = false)
+     * 2. Created their account before or on Nov 1, 2025 (were affected by the data cleanup)
+     */
+    private function shouldShowCompetitionAnnouncement($user): bool
+    {
+        // If user has already seen the announcement, don't show it
+        if ($user->has_seen_competition_announcement) {
+            return false;
+        }
+
+        // Only show to users created on or before Nov 1, 2025
+        // New users after Nov 1 don't need to see this announcement
+        $announcementCutoffDate = Carbon::parse('2025-11-01 23:59:59', 'Asia/Kuala_Lumpur');
+        
+        return $user->created_at->lte($announcementCutoffDate);
     }
 
     /**

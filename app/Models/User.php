@@ -33,6 +33,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'avatar_url',
         'google_id',
         'profile_completed',
+        'has_seen_competition_announcement',
     ];
 
     /**

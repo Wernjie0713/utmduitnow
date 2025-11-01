@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use App\Helpers\CompetitionWeekHelper;
 use Carbon\Carbon;
 
 class Transaction extends Model
@@ -42,10 +43,14 @@ class Transaction extends Model
 
     public function scopeThisWeek(Builder $query)
     {
-        $startOfWeek = Carbon::now()->startOfWeek();
-        $endOfWeek = Carbon::now()->endOfWeek();
+        $boundaries = CompetitionWeekHelper::getCurrentWeekBoundaries();
         
-        return $query->whereBetween('approved_at', [$startOfWeek, $endOfWeek]);
+        if ($boundaries === null) {
+            // Competition hasn't started, return no results
+            return $query->whereRaw('1 = 0');
+        }
+        
+        return $query->whereBetween('approved_at', [$boundaries['start'], $boundaries['end']]);
     }
 
     public function scopeThisMonth(Builder $query)
