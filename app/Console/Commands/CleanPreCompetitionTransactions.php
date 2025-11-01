@@ -15,14 +15,14 @@ class CleanPreCompetitionTransactions extends Command
      *
      * @var string
      */
-    protected $signature = 'competition:clean-pre-competition-data {--force : Force deletion without confirmation}';
+    protected $signature = 'competition:clean-pre-competition-data';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Remove all transactions dated before Nov 1, 2025 (before competition start)';
+    protected $description = 'Remove all transactions dated BEFORE Nov 1, 2025 (competition start date) - No confirmation required';
 
     /**
      * Execute the console command.
@@ -31,7 +31,10 @@ class CleanPreCompetitionTransactions extends Command
     {
         $competitionStart = Carbon::parse('2025-11-01 00:00:00', 'Asia/Kuala_Lumpur');
         
-        // Get transactions before competition start
+        $this->info('🔍 Searching for transactions dated BEFORE Nov 1, 2025...');
+        $this->newLine();
+        
+        // Get transactions BEFORE competition start (only transactions dated < Nov 1, 2025)
         $transactionsToDelete = Transaction::where('transaction_date', '<', $competitionStart)->get();
         
         if ($transactionsToDelete->isEmpty()) {
@@ -41,8 +44,7 @@ class CleanPreCompetitionTransactions extends Command
         }
 
         $count = $transactionsToDelete->count();
-        $this->newLine();
-        $this->warn("⚠️  Found {$count} transactions dated before Nov 1, 2025:");
+        $this->warn("⚠️  Found {$count} transaction(s) dated BEFORE Nov 1, 2025");
         $this->newLine();
         
         // Show summary by status
@@ -60,20 +62,14 @@ class CleanPreCompetitionTransactions extends Command
         $this->info("👤 This will affect {$affectedUsers} user(s).");
         $this->newLine();
 
-        // Confirm deletion
-        if (!$this->option('force')) {
-            $confirmed = $this->confirm(
-                'Do you want to permanently delete these transactions? This cannot be undone.',
-                false
-            );
-            
-            if (!$confirmed) {
-                $this->info('Operation cancelled. No data was deleted.');
-                return 1;
-            }
-        }
-
+        // Show date range of transactions being deleted
+        $oldestDate = $transactionsToDelete->min('transaction_date');
+        $newestDate = $transactionsToDelete->max('transaction_date');
+        $this->comment("📅 Transaction date range: {$oldestDate->format('Y-m-d')} to {$newestDate->format('Y-m-d')}");
+        $this->comment("✂️  All transactions dated BEFORE {$competitionStart->format('Y-m-d')} will be deleted.");
         $this->newLine();
+
+        // Perform deletion immediately (no confirmation required)
         $this->info('🗑️  Starting deletion process...');
         $this->newLine();
 
@@ -85,7 +81,7 @@ class CleanPreCompetitionTransactions extends Command
             $bar->setFormat(' %current%/%max% [%bar%] %percent:3s%% - Deleting receipts...');
             $bar->start();
 
-            // Delete associated files first (optional - keep storage clean)
+            // Delete associated files first (keep storage clean)
             foreach ($transactionsToDelete as $transaction) {
                 if ($transaction->receipt_image_path && Storage::exists($transaction->receipt_image_path)) {
                     Storage::delete($transaction->receipt_image_path);
@@ -97,7 +93,7 @@ class CleanPreCompetitionTransactions extends Command
             $bar->finish();
             $this->newLine(2);
 
-            // Delete the transactions
+            // Delete only transactions dated BEFORE Nov 1, 2025
             $deleted = Transaction::where('transaction_date', '<', $competitionStart)->delete();
             
             DB::commit();
@@ -109,6 +105,8 @@ class CleanPreCompetitionTransactions extends Command
             $this->line("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             $this->info("🏁 Competition database is now clean!");
             $this->info("📅 Competition starts: Nov 1, 2025 (Week 1: Nov 1-9)");
+            $this->comment("✓ Only transactions dated BEFORE Nov 1, 2025 were removed");
+            $this->comment("✓ Transactions dated Nov 1, 2025 and later are preserved");
             $this->line("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             $this->newLine();
             
