@@ -138,8 +138,17 @@ class AzureOcrService
                     $text .= $line['text'] . "\n";
                 }
             }
-            
-            return trim($text);
+
+            $extractedText = trim($text);
+
+            // Debug log to show extracted text
+            Log::debug('Azure OCR Extracted Text', [
+                'extracted_text' => $extractedText,
+                'text_length' => strlen($extractedText),
+                'timestamp' => now()->toISOString(),
+            ]);
+
+            return $extractedText;
             
         } catch (Exception $e) {
             Log::error('Azure OCR extraction failed: ' . $e->getMessage());

@@ -35,7 +35,7 @@ class OpenAiParserService
                 'Authorization' => 'Bearer ' . $this->apiKey,
                 'Content-Type' => 'application/json',
             ])->timeout(30)->post('https://api.openai.com/v1/chat/completions', [
-                'model' => 'gpt-3.5-turbo',
+                'model' => 'gpt-5-mini',
                 'messages' => [
                     [
                         'role' => 'system',
@@ -46,8 +46,6 @@ class OpenAiParserService
                         'content' => $prompt
                     ]
                 ],
-                'temperature' => 0.1,
-                'max_tokens' => 500,
             ]);
 
             if (!$response->successful()) {
@@ -61,17 +59,42 @@ class OpenAiParserService
             }
 
             $content = $result['choices'][0]['message']['content'];
-            
-            // Parse the JSON response
-            $parsed = json_decode($content, true);
-            
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new Exception('Failed to parse OpenAI response as JSON');
+
+            // Debug log to show OpenAI response
+            Log::debug('OpenAI Parser Response', [
+                'raw_content' => $content,
+                'timestamp' => now()->toISOString(),
+            ]);
+
+            // Clean the content - remove markdown code blocks if present
+            $cleanContent = trim($content);
+            if (str_starts_with($cleanContent, '```json')) {
+                $cleanContent = str_replace(['```json', '```'], '', $cleanContent);
+                $cleanContent = trim($cleanContent);
             }
+
+            // Parse the JSON response
+            $parsed = json_decode($cleanContent, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                Log::error('JSON Parse Error', [
+                    'json_error' => json_last_error_msg(),
+                    'raw_content' => $content,
+                    'clean_content' => $cleanContent,
+                    'timestamp' => now()->toISOString(),
+                ]);
+                throw new Exception('Failed to parse OpenAI response as JSON: ' . json_last_error_msg());
+            }
+
+            // Debug log to show parsed data
+            Log::debug('OpenAI Parsed Transaction Data', [
+                'parsed_data' => $parsed,
+                'timestamp' => now()->toISOString(),
+            ]);
 
             // Validate required fields
             $this->validateParsedData($parsed);
-            
+
             return $parsed;
             
         } catch (Exception $e) {
@@ -106,12 +129,24 @@ class OpenAiParserService
                "- If transaction_type cannot be found, use 'Transfer' as default\n" .
                "- Return ONLY the JSON object, no other text\n" .
                "- DO NOT make up or invent data - only extract what is clearly visible\n\n" .
+               "CRITICAL Instructions for DATE PARSING (MALAYSIA FORMAT):\n" .
+               "- IMPORTANT: This receipt uses MALAYSIAN date format (DD/MM/YYYY)\n" .
+               "- When you see a date like '01/11/2025', it means 1 November 2025, NOT 11 January 2025\n" .
+               "- Always interpret DD/MM/YYYY format: Day/Month/Year\n" .
+               "- Convert Malaysian dates to YYYY-MM-DD format (e.g., '01/11/2025' becomes '2025-11-01')\n" .
+               "- If month is written in text (e.g., '01 Nov 2025'), interpret correctly as 1 November 2025\n" .
+               "- If month is written as number (e.g., '01/11/2025'), treat as DD/MM/YYYY format\n" .
+               "- Malaysian dates NEVER use MM/DD/YYYY format - always DD/MM/YYYY\n\n" .
                "CRITICAL Instructions for reference_id:\n" .
                "- Look for 'Reference No.' first as the PRIMARY reference ID\n" .
                "- If 'Reference No.' exists, use that value and IGNORE 'DuitNow Ref No.'\n" .
                "- Only use 'DuitNow Ref No.' if 'Reference No.' is not found\n" .
                "- Also check for 'Ref No.', 'DuitNow Reference No.', 'Transaction ID', or similar labels\n" .
                "- The reference ID may span multiple lines - combine all lines to form complete reference ID\n" .
+               "- IMPORTANT: When reference ID is too long, it often wraps to the next line with a short number (2-3 digits)\n" .
+               "- If you see a very short number (like '159', '234', etc.) immediately after the main reference ID on the next line, ALWAYS combine them\n" .
+               "- Example: 'Reference ID 20251101RHBBMYKL040OQR55596\\n159' becomes '20251101RHBBMYKL040OQR55596159'\n" .
+               "- Example: 'Reference ID ABC123DEF456\\n789' becomes 'ABC123DEF456789'\n" .
                "- Remove any spaces or line breaks to form a single continuous reference ID\n" .
                "- IMPORTANT: If NO reference number is found, return null - DO NOT make up or invent a reference ID\n" .
                "- DO NOT use transaction date, time, or amount as reference ID\n\n" .
