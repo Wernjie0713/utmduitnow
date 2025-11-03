@@ -35,11 +35,11 @@ class OpenAiParserService
                 'Authorization' => 'Bearer ' . $this->apiKey,
                 'Content-Type' => 'application/json',
             ])->timeout(30)->post('https://api.openai.com/v1/chat/completions', [
-                'model' => 'gpt-5-mini',
+                'model' => 'gpt-5-nano',
                 'messages' => [
                     [
                         'role' => 'system',
-                        'content' => 'You are an expert at extracting structured data from transaction receipts. Always respond with valid JSON only, no additional text.'
+                        'content' => 'You are a precise data extraction assistant. You must follow step-by-step instructions exactly. When extracting reference IDs, always check if they continue on the next line. Return ONLY valid JSON, no explanations.'
                     ],
                     [
                         'role' => 'user',
@@ -111,57 +111,81 @@ class OpenAiParserService
      */
     protected function buildPrompt($ocrText)
     {
-        return "Extract the following information from this DuitNow transaction receipt and return ONLY valid JSON:\n\n" .
-               "OCR Text:\n{$ocrText}\n\n" .
-               "Extract and return in this exact JSON format:\n" .
+        return "You are extracting transaction data from a DuitNow receipt. Return ONLY valid JSON.\n\n" .
+               "=== OCR TEXT START ===\n{$ocrText}\n=== OCR TEXT END ===\n\n" .
+               "STEP 1: Find the Reference ID\n" .
+               "Search for these labels (in order of priority):\n" .
+               "1. 'Transaction No.' or 'Trans No.' (HIGHEST PRIORITY)\n" .
+               "2. 'Reference No.' or 'Reference ID' or 'Ref No.'\n" .
+               "3. 'DuitNow Ref No.' or 'DuitNow Reference No.'\n" .
+               "4. 'Transaction ID' or 'Trans ID'\n\n" .
+               "CRITICAL: NEVER use 'Wallet Ref' or 'Wallet Reference' - these are ALWAYS incorrect!\n" .
+               "If you see both 'Wallet Ref' and 'Transaction No.', ALWAYS use 'Transaction No.'!\n\n" .
+               "STEP 2: Handle Multi-Line Reference IDs (VERY IMPORTANT!)\n" .
+               "Reference IDs often wrap to the next line. Follow this process:\n" .
+               "a) Read the text IMMEDIATELY after the reference label (same line)\n" .
+               "b) Look at the VERY NEXT LINE in the OCR text\n" .
+               "c) If the next line is a continuation, it's part of the reference ID. Signs of continuation:\n" .
+               "   - Short alphanumeric text (1-20 characters)\n" .
+               "   - No colon (:) at the end (colons indicate labels like 'Date:', 'Time:')\n" .
+               "   - Not a known label like 'Status', 'Date', 'Time', 'Amount'\n" .
+               "d) Keep checking subsequent lines until you hit a label or unrelated text\n" .
+               "e) Combine ALL continuation lines WITHOUT spaces: Line1 + Line2 + Line3... = Complete Reference ID\n\n" .
+               "Examples of multi-line reference IDs:\n" .
+               "Input: 'Reference ID 20251101RHBBMYKL040OQR57821\\n806'\n" .
+               "Output: '20251101RHBBMYKL040OQR57821806'\n\n" .
+               "Input: 'Transaction No.\\n11a227ac-6f55-4f40-9a9b-\\nd9755b43d7ba'\n" .
+               "Output: '11a227ac-6f55-4f40-9a9b-d9755b43d7ba'\n\n" .
+               "Input: 'Ref No. ABC123XYZ789DEF456\\n123'\n" .
+               "Output: 'ABC123XYZ789DEF456123'\n\n" .
+               "Input: 'Reference No.\\n20251101BANK12345\\n678'\n" .
+               "Output: '20251101BANK12345678'\n\n" .
+               "IMPORTANT RULES for Reference ID:\n" .
+               "- Transaction No. (with UUID format) can span 2-3 lines - combine them all\n" .
+               "- Numeric references (like 20251101...) can span 2 lines - combine them\n" .
+               "- STOP combining when you hit a label ending with ':' (Date:, Time:, Status:)\n" .
+               "- STOP combining when you hit keywords like 'Status', 'Successful', 'Failed'\n" .
+               "- Remove ALL spaces, newlines, and hyphens at line breaks from the final reference ID\n" .
+               "- Keep hyphens that are part of UUIDs (e.g., '11a227ac-6f55-4f40')\n" .
+               "- NEVER use 'Wallet Ref' - it's always wrong!\n" .
+               "- If no reference is found, return null\n\n" .
+               "STEP 3: Extract Date (Malaysian Format DD/MM/YYYY)\n" .
+               "- Find: 'Date:', 'Transaction Date:', or similar\n" .
+               "- Malaysian format: DD/MM/YYYY (Day/Month/Year)\n" .
+               "- Convert to: YYYY-MM-DD\n" .
+               "- Example: '01/11/2025' = 1 November 2025 = '2025-11-01' (NOT January 11!)\n" .
+               "- Example: '15/12/2025' = 15 December 2025 = '2025-12-15'\n\n" .
+               "STEP 4: Extract Time\n" .
+               "- Find: 'Time:', 'Transaction Time:', or similar\n" .
+               "- Format: HH:MM:SS (24-hour format)\n" .
+               "- If seconds missing, add ':00'\n\n" .
+               "STEP 5: Extract Amount\n" .
+               "- Find: 'Amount:', 'Total:', 'RM', or similar\n" .
+               "- Extract ONLY the numeric value (no 'RM', no currency symbols)\n" .
+               "- Keep decimal point: '50.00' not '50'\n\n" .
+               "STEP 6: Extract Transaction Type\n" .
+               "Look for these keywords (priority order):\n" .
+               "1. 'DuitNow QR' → return 'DuitNow QR'\n" .
+               "2. 'DuitNow Transfer' or 'Duit Now Transfer' → return 'DuitNow Transfer'\n" .
+               "3. 'DuitNow Payment' or 'Duit Now Payment' → return 'DuitNow Payment'\n" .
+               "4. 'DuitNow' or 'Duit Now' (generic) → return 'DuitNow Transfer'\n" .
+               "5. 'Transfer' → return 'Transfer'\n" .
+               "6. 'Payment' → return 'Payment'\n" .
+               "7. If none found → return 'Transfer' (default)\n" .
+               "IMPORTANT: Extract ONLY the type keyword, ignore recipient/merchant names\n\n" .
+               "OUTPUT FORMAT (RETURN THIS EXACT STRUCTURE):\n" .
                "{\n" .
-               '  "reference_id": "the unique reference or transaction ID",'."\n" .
-               '  "date": "YYYY-MM-DD format",'."\n" .
-               '  "time": "HH:MM:SS format (24-hour)",'."\n" .
-               '  "amount": "numeric value only, without currency symbol",'."\n" .
-               '  "transaction_type": "transaction type (e.g., Transfer, Payment, DuitNow Transfer, DuitNow Payment, DuitNow QR)"'."\n" .
+               '  "reference_id": "combined multi-line reference ID here",'."\n" .
+               '  "date": "YYYY-MM-DD",'."\n" .
+               '  "time": "HH:MM:SS",'."\n" .
+               '  "amount": "numeric value only",'."\n" .
+               '  "transaction_type": "one of the valid types above"'."\n" .
                "}\n\n" .
-               "Rules:\n" .
-               "- If any field cannot be found, use null\n" .
-               "- Amount should be a decimal number\n" .
-               "- Date must be in YYYY-MM-DD format\n" .
-               "- Time must be in HH:MM:SS format\n" .
-               "- If transaction_type cannot be found, use 'Transfer' as default\n" .
-               "- Return ONLY the JSON object, no other text\n" .
-               "- DO NOT make up or invent data - only extract what is clearly visible\n\n" .
-               "CRITICAL Instructions for DATE PARSING (MALAYSIA FORMAT):\n" .
-               "- IMPORTANT: This receipt uses MALAYSIAN date format (DD/MM/YYYY)\n" .
-               "- When you see a date like '01/11/2025', it means 1 November 2025, NOT 11 January 2025\n" .
-               "- Always interpret DD/MM/YYYY format: Day/Month/Year\n" .
-               "- Convert Malaysian dates to YYYY-MM-DD format (e.g., '01/11/2025' becomes '2025-11-01')\n" .
-               "- If month is written in text (e.g., '01 Nov 2025'), interpret correctly as 1 November 2025\n" .
-               "- If month is written as number (e.g., '01/11/2025'), treat as DD/MM/YYYY format\n" .
-               "- Malaysian dates NEVER use MM/DD/YYYY format - always DD/MM/YYYY\n\n" .
-               "CRITICAL Instructions for reference_id:\n" .
-               "- Look for 'Reference No.' first as the PRIMARY reference ID\n" .
-               "- If 'Reference No.' exists, use that value and IGNORE 'DuitNow Ref No.'\n" .
-               "- Only use 'DuitNow Ref No.' if 'Reference No.' is not found\n" .
-               "- Also check for 'Ref No.', 'DuitNow Reference No.', 'Transaction ID', or similar labels\n" .
-               "- The reference ID may span multiple lines - combine all lines to form complete reference ID\n" .
-               "- IMPORTANT: When reference ID is too long, it often wraps to the next line with a short number (2-3 digits)\n" .
-               "- If you see a very short number (like '159', '234', etc.) immediately after the main reference ID on the next line, ALWAYS combine them\n" .
-               "- Example: 'Reference ID 20251101RHBBMYKL040OQR55596\\n159' becomes '20251101RHBBMYKL040OQR55596159'\n" .
-               "- Example: 'Reference ID ABC123DEF456\\n789' becomes 'ABC123DEF456789'\n" .
-               "- Remove any spaces or line breaks to form a single continuous reference ID\n" .
-               "- IMPORTANT: If NO reference number is found, return null - DO NOT make up or invent a reference ID\n" .
-               "- DO NOT use transaction date, time, or amount as reference ID\n\n" .
-               "CRITICAL Instructions for transaction_type:\n" .
-               "- Look for transaction type labels in the receipt text\n" .
-               "- Valid transaction types: 'DuitNow Transfer', 'DuitNow Payment', 'DuitNow QR', 'Transfer', 'Payment'\n" .
-               "- PRIORITY ORDER: Check for 'DuitNow' variations FIRST before falling back to generic types\n" .
-               "- If you see 'DuitNow Transfer' or 'Duit Now Transfer', use 'DuitNow Transfer'\n" .
-               "- If you see 'DuitNow Payment' or 'Duit Now Payment', use 'DuitNow Payment'\n" .
-               "- If you see 'DuitNow QR' or 'Duit Now QR', use 'DuitNow QR'\n" .
-               "- If you see 'DuitNow' or 'Duit Now' WITHOUT specific type, use 'DuitNow Transfer'\n" .
-               "- Extract ONLY the transaction type keyword - DO NOT include recipient or merchant names\n" .
-               "- If you see 'Transfer to [merchant name]', extract ONLY 'Transfer' (ignore everything after 'to')\n" .
-               "- If you see 'Payment to [merchant name]', extract ONLY 'Payment' (ignore everything after 'to')\n" .
-               "- If no clear transaction type is found, use 'Transfer' as default";
+               "FINAL REMINDERS:\n" .
+               "- Return ONLY the JSON object, NO other text\n" .
+               "- Use null for missing fields\n" .
+               "- DO NOT invent or make up data\n" .
+               "- ALWAYS check the next line after reference ID for continuation numbers";
     }
 
     /**
