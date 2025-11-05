@@ -17,17 +17,55 @@ export default function TransactionTrendsChart({ data, period }) {
         },
     };
 
-    // Format date based on period
+    // Calculate date range span for smart formatting
+    const getDateRangeType = () => {
+        if (!data || data.length === 0) return 'month';
+        
+        const dates = data.map(d => new Date(d.date)).filter(d => !isNaN(d.getTime()));
+        if (dates.length === 0) return 'month';
+        
+        const minDate = new Date(Math.min(...dates));
+        const maxDate = new Date(Math.max(...dates));
+        const daysDiff = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24));
+        
+        // Within 1 month (31 days): show individual dates
+        if (daysDiff <= 31) return 'date';
+        // 1-3 months (32-90 days): show weekly data points
+        if (daysDiff <= 90) return 'week';
+        // More than 3 months: show monthly data points
+        return 'month';
+    };
+
+    // Format date based on period and date range
     const formatXAxis = (value) => {
+        if (!value) return '';
         const date = new Date(value);
+        // Check if date is valid
+        if (isNaN(date.getTime())) return '';
+        
         if (period === 'weekly') {
-            // Show day name for weekly
+            // Show day name for weekly period
             return date.toLocaleDateString('en-US', { weekday: 'short' });
         } else if (period === 'monthly') {
-            // Show day for monthly
+            // Show day and month for monthly period
             return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+        } else if (period === 'custom') {
+            // Smart formatting based on date range
+            const rangeType = getDateRangeType();
+            
+            if (rangeType === 'date') {
+                // Show date and month for daily data (within 1 month)
+                return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+            } else if (rangeType === 'week') {
+                // Show "Week of [date]" for weekly data (1-3 months)
+                const monthDay = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                return monthDay;
+            } else {
+                // Show month and year for monthly data (3+ months)
+                return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+            }
         } else {
-            // Show month for all time
+            // Show month and year for all time
             return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
         }
     };
@@ -70,7 +108,9 @@ export default function TransactionTrendsChart({ data, period }) {
                     content={
                         <ChartTooltipContent
                             labelFormatter={(value) => {
+                                if (!value) return '';
                                 const date = new Date(value);
+                                if (isNaN(date.getTime())) return '';
                                 return date.toLocaleDateString('en-US', {
                                     weekday: 'long',
                                     year: 'numeric',

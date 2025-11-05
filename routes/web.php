@@ -50,6 +50,7 @@ Route::middleware(['auth', 'verified', 'profile.completed'])->group(function () 
 // Admin Routes
 Route::middleware(['auth', 'verified', 'profile.completed'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/custom-range', [AdminDashboardController::class, 'getCustomRangeData'])->name('dashboard.custom');
     Route::get('/users', [AdminDashboardController::class, 'users'])->name('users');
     Route::get('/users/export', [AdminDashboardController::class, 'exportUsers'])->name('users.export');
     Route::get('/reports', [AdminDashboardController::class, 'reports'])->name('reports');

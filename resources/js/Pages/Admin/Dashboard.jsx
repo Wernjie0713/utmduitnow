@@ -8,8 +8,13 @@ import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/Components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
+import { Label } from '@/Components/ui/label';
+import { DateRangePicker } from '@/Components/ui/date-range-picker';
 import UserAvatar from '@/Components/UserAvatar';
 import { Users, FileCheck, FileX, DollarSign, Download, Trophy, Medal, Award, ChevronDown, BarChart3, TrendingUp, PieChart } from 'lucide-react';
+import { format } from 'date-fns';
+import axios from 'axios';
+import { toast } from 'sonner';
 import TransactionTrendsChart from '@/Components/Admin/Charts/TransactionTrendsChart';
 import FacultyComparisonChart from '@/Components/Admin/Charts/FacultyComparisonChart';
 import StatusDistributionChart from '@/Components/Admin/Charts/StatusDistributionChart';
@@ -22,6 +27,16 @@ export default function Dashboard({
 }) {
     const [selectedChart, setSelectedChart] = useState('trends');
     const [selectedChartPeriod, setSelectedChartPeriod] = useState('weekly');
+    const [selectedLeaderboardTab, setSelectedLeaderboardTab] = useState('weekly');
+    
+    // Separate date range states for Leaderboard and Analytics
+    const [leaderboardDateRange, setLeaderboardDateRange] = useState({ from: undefined, to: undefined });
+    const [analyticsDateRange, setAnalyticsDateRange] = useState({ from: undefined, to: undefined });
+    
+    const [customData, setCustomData] = useState(null);
+    const [analyticsCustomData, setAnalyticsCustomData] = useState(null);
+    const [isLoadingCustom, setIsLoadingCustom] = useState(false);
+    const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
 
     const getRankIcon = (rank) => {
         switch (rank) {
@@ -140,8 +155,75 @@ export default function Dashboard({
         );
     };
 
-    const exportLeaderboard = (period, limit = 20) => {
-        window.location.href = route('admin.export', { period, limit });
+    const exportLeaderboard = (period, limit = 20, startDate = null, endDate = null) => {
+        const params = new URLSearchParams({ period, limit });
+        if (startDate && endDate) {
+            params.append('start_date', startDate);
+            params.append('end_date', endDate);
+        }
+        window.location.href = route('admin.export') + '?' + params.toString();
+    };
+
+    const fetchCustomRangeData = async () => {
+        if (!leaderboardDateRange || !leaderboardDateRange.from || !leaderboardDateRange.to) {
+            toast.error('Please select both start and end dates');
+            return;
+        }
+
+        if (leaderboardDateRange.from > leaderboardDateRange.to) {
+            toast.error('Start date must be before or equal to end date');
+            return;
+        }
+
+        setIsLoadingCustom(true);
+        try {
+            const response = await axios.get(route('admin.dashboard.custom'), {
+                params: {
+                    start_date: format(leaderboardDateRange.from, 'yyyy-MM-dd'),
+                    end_date: format(leaderboardDateRange.to, 'yyyy-MM-dd'),
+                }
+            });
+
+            setCustomData(response.data);
+            toast.success('Custom range data loaded successfully');
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to load custom range data');
+            console.error('Error fetching custom range data:', error);
+        } finally {
+            setIsLoadingCustom(false);
+        }
+    };
+
+    const fetchAnalyticsCustomData = async () => {
+        if (!analyticsDateRange || !analyticsDateRange.from || !analyticsDateRange.to) {
+            toast.error('Please select both start and end dates for analytics');
+            return;
+        }
+
+        if (analyticsDateRange.from > analyticsDateRange.to) {
+            toast.error('Start date must be before or equal to end date');
+            return;
+        }
+
+        setIsLoadingAnalytics(true);
+        try {
+            const response = await axios.get(route('admin.dashboard.custom'), {
+                params: {
+                    start_date: format(analyticsDateRange.from, 'yyyy-MM-dd'),
+                    end_date: format(analyticsDateRange.to, 'yyyy-MM-dd'),
+                }
+            });
+
+            setAnalyticsCustomData(response.data);
+            // Auto-switch to custom period
+            setSelectedChartPeriod('custom');
+            toast.success('Analytics custom range loaded successfully');
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to load analytics data');
+            console.error('Error fetching analytics custom data:', error);
+        } finally {
+            setIsLoadingAnalytics(false);
+        }
     };
 
     return (
@@ -223,6 +305,17 @@ export default function Dashboard({
                                             <Download className="mr-2 h-4 w-4" />
                                             All-Time (Top 20)
                                         </DropdownMenuItem>
+                                        {customData && leaderboardDateRange && leaderboardDateRange.from && leaderboardDateRange.to && (
+                                            <DropdownMenuItem onClick={() => exportLeaderboard(
+                                                'custom',
+                                                20,
+                                                format(leaderboardDateRange.from, 'yyyy-MM-dd'),
+                                                format(leaderboardDateRange.to, 'yyyy-MM-dd')
+                                            )}>
+                                                <Download className="mr-2 h-4 w-4" />
+                                                Custom Range (Top 20)
+                                            </DropdownMenuItem>
+                                        )}
                                         <DropdownMenuItem onClick={() => exportLeaderboard('all')}>
                                             <Download className="mr-2 h-4 w-4" />
                                             All Periods (Top 20 Each)
@@ -232,11 +325,12 @@ export default function Dashboard({
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <Tabs defaultValue="weekly" className="w-full">
-                                <TabsList className="grid w-full grid-cols-3">
+                            <Tabs defaultValue="weekly" value={selectedLeaderboardTab} onValueChange={setSelectedLeaderboardTab} className="w-full">
+                                <TabsList className="grid w-full grid-cols-4">
                                     <TabsTrigger value="weekly">Weekly</TabsTrigger>
                                     <TabsTrigger value="monthly">Monthly</TabsTrigger>
                                     <TabsTrigger value="all-time">All-Time</TabsTrigger>
+                                    <TabsTrigger value="custom">Custom</TabsTrigger>
                                 </TabsList>
 
                                 <TabsContents>
@@ -277,6 +371,54 @@ export default function Dashboard({
                                         </div>
                                         {renderLeaderboard(leaderboards?.allTime)}
                                     </TabsContent>
+
+                                    <TabsContent value="custom" className="mt-6">
+                                        <div className="space-y-4">
+                                            <div className="flex items-end gap-4">
+                                                <div className="flex-1">
+                                                    <Label className="mb-2 block">Select Date Range</Label>
+                                                    <DateRangePicker 
+                                                        value={leaderboardDateRange}
+                                                        onChange={setLeaderboardDateRange}
+                                                    />
+                                                </div>
+                                                <Button 
+                                                    onClick={fetchCustomRangeData}
+                                                    disabled={!leaderboardDateRange || !leaderboardDateRange.from || !leaderboardDateRange.to || isLoadingCustom}
+                                                >
+                                                    {isLoadingCustom ? 'Loading...' : 'Apply'}
+                                                </Button>
+                                            </div>
+                                            
+                                            {customData && (
+                                                <>
+                                                    <div className="mb-4">
+                                                        <h3 className="text-lg font-semibold">Custom Range</h3>
+                                                        <p className="text-sm text-gray-600">
+                                                            {leaderboardDateRange && leaderboardDateRange.from && leaderboardDateRange.to ? (
+                                                                `${format(leaderboardDateRange.from, 'PPP')} - ${format(leaderboardDateRange.to, 'PPP')}`
+                                                            ) : (
+                                                                'Date range selected'
+                                                            )}
+                                                        </p>
+                                                    </div>
+                                                    {renderLeaderboard(customData.leaderboard)}
+                                                </>
+                                            )}
+                                            
+                                            {!customData && (
+                                                <div className="text-center py-16 text-gray-500">
+                                                    <div className="flex flex-col items-center gap-4">
+                                                        <Trophy className="h-16 w-16 text-gray-300" />
+                                                        <div>
+                                                            <p className="text-lg font-medium text-gray-700">Select a date range</p>
+                                                            <p className="text-sm">Choose your start and end dates, then click Apply to view the leaderboard.</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </TabsContent>
                                 </TabsContents>
                             </Tabs>
                         </CardContent>
@@ -286,7 +428,7 @@ export default function Dashboard({
                     <Card className="mt-6">
                         <CardHeader>
                             <div className="flex items-start justify-between">
-                                <div>
+                                <div className="flex-1">
                                     <CardTitle className="flex items-center gap-2">
                                         <BarChart3 className="h-5 w-5 text-blue-500" />
                                         Analytics Dashboard
@@ -295,19 +437,41 @@ export default function Dashboard({
                                         Comprehensive insights into competition data
                                     </CardDescription>
                                 </div>
-                                {/* Time Period Dropdown - Only show for charts that support it */}
-                                {['trends', 'faculty', 'years'].includes(selectedChart) && (
-                                    <Select value={selectedChartPeriod} onValueChange={setSelectedChartPeriod}>
-                                        <SelectTrigger className="w-[140px]">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="weekly">Weekly</SelectItem>
-                                            <SelectItem value="monthly">Monthly</SelectItem>
-                                            <SelectItem value="all_time">All Time</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                )}
+                                <div className="flex items-center gap-3">
+                                    {/* Custom Date Range Picker for Analytics */}
+                                    {['trends', 'faculty', 'years'].includes(selectedChart) && selectedChartPeriod === 'custom' && (
+                                        <div className="flex items-end gap-2">
+                                            <div className="w-[280px]">
+                                                <Label className="text-xs mb-1 block">Analytics Date Range</Label>
+                                                <DateRangePicker 
+                                                    value={analyticsDateRange}
+                                                    onChange={setAnalyticsDateRange}
+                                                />
+                                            </div>
+                                            <Button 
+                                                size="sm"
+                                                onClick={fetchAnalyticsCustomData}
+                                                disabled={!analyticsDateRange || !analyticsDateRange.from || !analyticsDateRange.to || isLoadingAnalytics}
+                                            >
+                                                {isLoadingAnalytics ? 'Loading...' : 'Apply'}
+                                            </Button>
+                                        </div>
+                                    )}
+                                    {/* Time Period Dropdown - Only show for charts that support it */}
+                                    {['trends', 'faculty', 'years'].includes(selectedChart) && (
+                                        <Select value={selectedChartPeriod} onValueChange={setSelectedChartPeriod}>
+                                            <SelectTrigger className="w-[140px]">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="weekly">Weekly</SelectItem>
+                                                <SelectItem value="monthly">Monthly</SelectItem>
+                                                <SelectItem value="all_time">All Time</SelectItem>
+                                                <SelectItem value="custom">Custom</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                </div>
                             </div>
                         </CardHeader>
                         <CardContent>
@@ -333,14 +497,22 @@ export default function Dashboard({
 
                                 <TabsContent value="trends" className="mt-6">
                                     <TransactionTrendsChart 
-                                        data={analyticsData?.trends?.[selectedChartPeriod] || []}
+                                        data={
+                                            selectedChartPeriod === 'custom' && analyticsCustomData
+                                                ? analyticsCustomData.analytics?.trends || []
+                                                : analyticsData?.trends?.[selectedChartPeriod] || []
+                                        }
                                         period={selectedChartPeriod}
                                     />
                                 </TabsContent>
 
                                 <TabsContent value="faculty" className="mt-6">
                                     <FacultyComparisonChart 
-                                        data={analyticsData?.faculty?.[selectedChartPeriod] || []}
+                                        data={
+                                            selectedChartPeriod === 'custom' && analyticsCustomData
+                                                ? analyticsCustomData.analytics?.faculty || []
+                                                : analyticsData?.faculty?.[selectedChartPeriod] || []
+                                        }
                                         period={selectedChartPeriod}
                                     />
                                 </TabsContent>
@@ -353,7 +525,11 @@ export default function Dashboard({
 
                                 <TabsContent value="years" className="mt-6">
                                     <YearParticipationChart 
-                                        data={analyticsData?.years?.[selectedChartPeriod] || []}
+                                        data={
+                                            selectedChartPeriod === 'custom' && analyticsCustomData
+                                                ? analyticsCustomData.analytics?.years || []
+                                                : analyticsData?.years?.[selectedChartPeriod] || []
+                                        }
                                         period={selectedChartPeriod}
                                     />
                                 </TabsContent>

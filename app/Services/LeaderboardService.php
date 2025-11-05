@@ -57,6 +57,21 @@ class LeaderboardService
     }
 
     /**
+     * Get leaderboard for a custom date range
+     * 
+     * @param string $startDate Start date (Y-m-d format)
+     * @param string $endDate End date (Y-m-d format)
+     * @return \Illuminate\Support\Collection
+     */
+    public function getCustomRangeLeaderboard($startDate, $endDate)
+    {
+        $start = Carbon::parse($startDate)->startOfDay();
+        $end = Carbon::parse($endDate)->endOfDay();
+
+        return $this->getLeaderboard('custom', $start, $end);
+    }
+
+    /**
      * Get leaderboard for a specific period
      * 
      * @param string $periodType

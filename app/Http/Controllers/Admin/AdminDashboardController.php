@@ -75,6 +75,39 @@ class AdminDashboardController extends Controller
     }
 
     /**
+     * Get custom date range data for leaderboard and analytics
+     */
+    public function getCustomRangeData(Request $request)
+    {
+        $request->validate([
+            'start_date' => 'required|date|date_format:Y-m-d',
+            'end_date' => 'required|date|date_format:Y-m-d|after_or_equal:start_date',
+        ]);
+
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+
+        // Get leaderboard for custom range
+        $leaderboard = $this->leaderboardService->getCustomRangeLeaderboard($startDate, $endDate);
+
+        // Get analytics data for custom range
+        $analyticsData = [
+            'trends' => $this->analyticsService->getTransactionTrendsCustom($startDate, $endDate),
+            'faculty' => $this->analyticsService->getFacultyComparisonCustom($startDate, $endDate),
+            'years' => $this->analyticsService->getYearParticipationCustom($startDate, $endDate),
+        ];
+
+        return response()->json([
+            'leaderboard' => $leaderboard,
+            'analytics' => $analyticsData,
+            'date_range' => [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+            ],
+        ]);
+    }
+
+    /**
      * Generate reports with filters
      */
     public function reports(Request $request)
@@ -144,6 +177,8 @@ class AdminDashboardController extends Controller
         $limit = $request->input('limit', 20); // Default to top 20
         $month = $request->input('month');
         $year = $request->input('year');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
 
         $filename = "leaderboard_{$period}_top{$limit}_" . now()->format('Y-m-d_His') . ".csv";
         
@@ -219,6 +254,7 @@ class AdminDashboardController extends Controller
             $leaderboard = match ($period) {
                 'weekly' => $this->leaderboardService->getWeeklyLeaderboard(),
                 'monthly' => $this->leaderboardService->getMonthlyLeaderboard($month, $year),
+                'custom' => $this->leaderboardService->getCustomRangeLeaderboard($startDate, $endDate),
                 default => $this->leaderboardService->getAllTimeLeaderboard(),
             };
 
