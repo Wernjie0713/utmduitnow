@@ -49,11 +49,19 @@ class LeaderboardService
     /**
      * Get all-time leaderboard
      * 
+     * @param bool $adminView If false, filters to only show data from Nov 1, 2025 onwards
      * @return \Illuminate\Support\Collection
      */
-    public function getAllTimeLeaderboard()
+    public function getAllTimeLeaderboard($adminView = true)
     {
-        return $this->getLeaderboard('all_time');
+        if ($adminView) {
+            // Admin view: show all transactions
+            return $this->getLeaderboard('all_time');
+        } else {
+            // Normal user view: show only from Nov 1, 2025 onwards
+            $startDate = Carbon::create(2025, 11, 1)->startOfDay();
+            return $this->getLeaderboard('all_time', $startDate, null);
+        }
     }
 
     /**
@@ -88,6 +96,9 @@ class LeaderboardService
         // Apply date filter if provided
         if ($startDate && $endDate) {
             $query->whereBetween('approved_at', [$startDate, $endDate]);
+        } elseif ($startDate) {
+            // Only start date provided (for all-time from specific date onwards)
+            $query->where('approved_at', '>=', $startDate);
         }
 
         // Get transaction counts per user with tie-breaker
@@ -156,14 +167,15 @@ class LeaderboardService
      * @param string $periodType
      * @param int|null $month
      * @param int|null $year
+     * @param bool $adminView
      * @return array|null
      */
-    public function getUserPosition($userId, $periodType, $month = null, $year = null)
+    public function getUserPosition($userId, $periodType, $month = null, $year = null, $adminView = true)
     {
         $leaderboard = match ($periodType) {
             'weekly' => $this->getWeeklyLeaderboard(),
             'monthly' => $this->getMonthlyLeaderboard($month, $year),
-            'all_time' => $this->getAllTimeLeaderboard(),
+            'all_time' => $this->getAllTimeLeaderboard($adminView),
             default => collect([]),
         };
 
@@ -187,14 +199,15 @@ class LeaderboardService
      * @param string $periodType
      * @param int|null $month
      * @param int|null $year
+     * @param bool $adminView
      * @return array
      */
-    public function getTop20WithUserPosition($userId, $periodType, $month = null, $year = null)
+    public function getTop20WithUserPosition($userId, $periodType, $month = null, $year = null, $adminView = true)
     {
         $leaderboard = match ($periodType) {
             'weekly' => $this->getWeeklyLeaderboard(),
             'monthly' => $this->getMonthlyLeaderboard($month, $year),
-            'all_time' => $this->getAllTimeLeaderboard(),
+            'all_time' => $this->getAllTimeLeaderboard($adminView),
             default => collect([]),
         };
         
@@ -221,14 +234,15 @@ class LeaderboardService
      * @param string|null $search
      * @param int|null $month
      * @param int|null $year
+     * @param bool $adminView
      * @return array
      */
-    public function getPaginatedLeaderboard($periodType, $page = 1, $perPage = 50, $search = null, $month = null, $year = null)
+    public function getPaginatedLeaderboard($periodType, $page = 1, $perPage = 50, $search = null, $month = null, $year = null, $adminView = true)
     {
         $leaderboard = match ($periodType) {
             'weekly' => $this->getWeeklyLeaderboard(),
             'monthly' => $this->getMonthlyLeaderboard($month, $year),
-            'all_time' => $this->getAllTimeLeaderboard(),
+            'all_time' => $this->getAllTimeLeaderboard($adminView),
             default => collect([]),
         };
         

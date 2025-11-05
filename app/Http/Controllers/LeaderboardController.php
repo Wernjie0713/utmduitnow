@@ -22,10 +22,11 @@ class LeaderboardController extends Controller
     public function index(Request $request)
     {
         $userId = Auth::id();
+        $isAdmin = Auth::user()->roles->contains('name', 'admin');
         
         $weeklyData = $this->leaderboardService->getTop20WithUserPosition($userId, 'weekly');
         $monthlyData = $this->leaderboardService->getTop20WithUserPosition($userId, 'monthly');
-        $allTimeData = $this->leaderboardService->getTop20WithUserPosition($userId, 'all_time');
+        $allTimeData = $this->leaderboardService->getTop20WithUserPosition($userId, 'all_time', null, null, $isAdmin);
 
         return Inertia::render('Leaderboard/Index', [
             'weeklyData' => $weeklyData,
@@ -70,7 +71,8 @@ class LeaderboardController extends Controller
      */
     public function allTime()
     {
-        $leaderboard = $this->leaderboardService->getAllTimeLeaderboard();
+        $isAdmin = Auth::user()->roles->contains('name', 'admin');
+        $leaderboard = $this->leaderboardService->getAllTimeLeaderboard($isAdmin);
         
         return response()->json([
             'leaderboard' => $leaderboard,
@@ -92,6 +94,7 @@ class LeaderboardController extends Controller
     public function fullRankings(Request $request)
     {
         $userId = Auth::id();
+        $isAdmin = Auth::user()->roles->contains('name', 'admin');
         $periodType = $request->input('period', 'all_time');
         $page = $request->input('page', 1);
         $perPage = $request->input('per_page', 50);
@@ -100,10 +103,10 @@ class LeaderboardController extends Controller
         $year = $request->input('year', now()->year);
         
         $paginatedData = $this->leaderboardService->getPaginatedLeaderboard(
-            $periodType, $page, $perPage, $search, $month, $year
+            $periodType, $page, $perPage, $search, $month, $year, $isAdmin
         );
         
-        $userPosition = $this->leaderboardService->getUserPosition($userId, $periodType, $month, $year);
+        $userPosition = $this->leaderboardService->getUserPosition($userId, $periodType, $month, $year, $isAdmin);
         
         return response()->json([
             ...$paginatedData,

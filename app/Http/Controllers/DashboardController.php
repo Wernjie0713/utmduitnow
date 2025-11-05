@@ -40,9 +40,10 @@ class DashboardController extends Controller
     private function studentDashboard($user)
     {
         // Get Top 20 leaderboard data with user position
+        // For students, all_time shows only from Nov 1, 2025 onwards
         $weeklyData = $this->leaderboardService->getTop20WithUserPosition($user->id, 'weekly');
         $monthlyData = $this->leaderboardService->getTop20WithUserPosition($user->id, 'monthly');
-        $allTimeData = $this->leaderboardService->getTop20WithUserPosition($user->id, 'all_time');
+        $allTimeData = $this->leaderboardService->getTop20WithUserPosition($user->id, 'all_time', null, null, false);
         
         // Get student's personal stats
         $stats = [

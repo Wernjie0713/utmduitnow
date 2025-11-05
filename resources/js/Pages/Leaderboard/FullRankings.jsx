@@ -41,7 +41,7 @@ export default function FullRankings({ auth }) {
     const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
     const [search, setSearch] = useState('');
     const [searchValue, setSearchValue] = useState('');
-    const [period, setPeriod] = useState(isAdmin ? 'all_time' : 'weekly');
+    const [period, setPeriod] = useState('weekly');
     const [userPosition, setUserPosition] = useState(null);
     const [totalPages, setTotalPages] = useState(1);
     const [totalRecords, setTotalRecords] = useState(0);
@@ -79,12 +79,6 @@ export default function FullRankings({ auth }) {
         }
     };
     
-    // Ensure non-admin users can't access all_time period
-    useEffect(() => {
-        if (!isAdmin && period === 'all_time') {
-            setPeriod('weekly');
-        }
-    }, [isAdmin, period]);
     
     // Fetch data when pagination, search, or period changes
     useEffect(() => {
@@ -151,19 +145,13 @@ export default function FullRankings({ auth }) {
                 <div className="mx-auto max-w-7xl">
                     <div className="bg-white rounded-lg shadow-sm p-6">
                             <Tabs value={period} onValueChange={(value) => {
-                                // Prevent non-admin users from selecting all_time
-                                if (!isAdmin && value === 'all_time') {
-                                    return;
-                                }
                                 setPeriod(value);
                                 setPagination({ pageIndex: 0, pageSize: 10 });
                             }}>
-                                <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-3' : 'grid-cols-2'} mb-6`}>
+                                <TabsList className="grid w-full grid-cols-3 mb-6">
                                     <TabsTrigger value="weekly">Weekly</TabsTrigger>
                                     <TabsTrigger value="monthly">Monthly</TabsTrigger>
-                                    {isAdmin && (
-                                        <TabsTrigger value="all_time">All-Time</TabsTrigger>
-                                    )}
+                                    <TabsTrigger value="all_time">All-Time</TabsTrigger>
                                 </TabsList>
                                 
                                 {/* Date Display Below Tabs */}
@@ -192,11 +180,14 @@ export default function FullRankings({ auth }) {
                                             </p>
                                         </>
                                     )}
-                                    {isAdmin && period === 'all_time' && (
+                                    {period === 'all_time' && (
                                         <>
                                             <h3 className="text-lg font-semibold">All-Time Champions</h3>
                                             <p className="text-sm text-gray-600">
-                                                Since the beginning of the competition
+                                                {isAdmin 
+                                                    ? 'Since the beginning of the competition' 
+                                                    : 'Since November 1, 2025'
+                                                }
                                             </p>
                                         </>
                                     )}
