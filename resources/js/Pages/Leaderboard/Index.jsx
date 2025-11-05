@@ -14,6 +14,10 @@ export default function Index({
     monthlyData,
     allTimeData,
 }) {
+    // Check if user is admin
+    const isAdmin = auth?.user?.roles?.some(role => role.name === 'admin') || false;
+    console.log(isAdmin);
+
     const getRankIcon = (rank) => {
         switch (rank) {
             case 1:
@@ -166,10 +170,12 @@ export default function Index({
                         </CardHeader>
                         <CardContent>
                             <Tabs defaultValue="weekly" className="w-full">
-                                <TabsList className="grid w-full grid-cols-3">
+                                <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-3' : 'grid-cols-2'}`}>
                                     <TabsTrigger value="weekly">Weekly</TabsTrigger>
                                     <TabsTrigger value="monthly">Monthly</TabsTrigger>
-                                    <TabsTrigger value="all-time">All-Time</TabsTrigger>
+                                    {isAdmin && (
+                                        <TabsTrigger value="all-time">All-Time</TabsTrigger>
+                                    )}
                                 </TabsList>
 
                                 <TabsContent value="weekly" className="mt-6">
@@ -200,15 +206,17 @@ export default function Index({
                                     {renderLeaderboard(monthlyData)}
                                 </TabsContent>
 
-                                <TabsContent value="all-time" className="mt-6">
-                                    <div className="mb-4">
-                                        <h3 className="text-lg font-semibold">All-Time Champions</h3>
-                                        <p className="text-sm text-gray-600">
-                                            Since the beginning of the competition
-                                        </p>
-                                    </div>
-                                    {renderLeaderboard(allTimeData)}
-                                </TabsContent>
+                                {isAdmin && (
+                                    <TabsContent value="all-time" className="mt-6">
+                                        <div className="mb-4">
+                                            <h3 className="text-lg font-semibold">All-Time Champions</h3>
+                                            <p className="text-sm text-gray-600">
+                                                Since the beginning of the competition
+                                            </p>
+                                        </div>
+                                        {renderLeaderboard(allTimeData)}
+                                    </TabsContent>
+                                )}
                             </Tabs>
                         </CardContent>
                     </Card>

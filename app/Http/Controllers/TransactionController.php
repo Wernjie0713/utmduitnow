@@ -96,7 +96,12 @@ class TransactionController extends Controller
      */
     public function myTransactions(Request $request)
     {
-        $query = Transaction::where('user_id', auth()->id());
+        $query = Transaction::where('user_id', auth()->id())
+            // Exclude October data
+            ->where(function($q) {
+                $q->whereMonth('transaction_date', '!=', 10)
+                  ->orWhereNull('transaction_date');
+            });
         
         // Global search (Reference ID and Amount)
         if ($request->has('search') && $request->search) {

@@ -39,12 +39,6 @@ function AuthenticatedLayoutInner({ user, isAdmin, header, children }) {
 
     const navItems = isAdmin ? adminNavItems : studentNavItems;
 
-    // Debug navigation
-    console.log('=== Navigation Debug ===');
-    console.log('Is Admin (inner):', isAdmin);
-    console.log('Selected Nav Items:', navItems);
-    console.log('========================');
-
     return (
         <>
             <Sidebar 
@@ -199,13 +193,6 @@ function AuthenticatedLayoutInner({ user, isAdmin, header, children }) {
 export default function AuthenticatedLayout({ header, children }) {
     const user = usePage().props.auth.user;
     const isAdmin = user?.roles?.some(role => role.name === 'admin') || false;
-
-    // Debug logging
-    console.log('=== AuthenticatedLayout Debug ===');
-    console.log('User:', user);
-    console.log('User roles:', user?.roles);
-    console.log('Is Admin:', isAdmin);
-    console.log('================================');
 
     return (
         <SidebarProvider defaultOpen={true}>
