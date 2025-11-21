@@ -19,6 +19,7 @@ import {
     useSidebar
 } from '@/Components/animate-ui/components/radix/sidebar';
 import { Home, Upload, List, User, LogOut, Settings, ChevronDown, Trophy, ListOrdered, Menu, X } from 'lucide-react';
+import NotificationBell from '@/Components/NotificationBell';
 
 // Inner component that uses useSidebar hook
 function AuthenticatedLayoutInner({ user, isAdmin, header, children }) {
@@ -146,8 +147,11 @@ function AuthenticatedLayoutInner({ user, isAdmin, header, children }) {
                         </div>
                     )}
                     
-                    {/* User Dropdown in Header */}
-                    <div className="ml-auto">
+                    {/* Notification Bell & User Dropdown in Header */}
+                    <div className="ml-auto flex items-center gap-2">
+                        {/* Show notification bell only for students (non-admin) */}
+                        {!isAdmin && <NotificationBell />}
+                        
                         <Dropdown>
                             <Dropdown.Trigger>
                                 <button className="flex items-center gap-2 rounded-full p-1 transition-colors hover:bg-gray-100">
