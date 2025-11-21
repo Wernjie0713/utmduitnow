@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Transaction;
 use App\Services\TransactionVerificationService;
+use App\Helpers\CompetitionWeekHelper;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -25,11 +26,18 @@ class TransactionController extends Controller
         $todaySubmissions = $user->getTodaySubmissionCount();
         $maxSubmissions = config('app.max_submissions_per_day', 100);
         $canSubmit = $user->canSubmitToday();
+        
+        // Check if we're in Week 3 extended submission period
+        $isExtendedPeriod = CompetitionWeekHelper::isInWeek3ExtendedSubmissionPeriod();
 
         return Inertia::render('Transactions/Submit', [
             'todaySubmissions' => $todaySubmissions,
             'maxSubmissions' => $maxSubmissions,
             'canSubmit' => $canSubmit,
+            'isExtendedPeriod' => $isExtendedPeriod,
+            'extendedSubmissionEnd' => $isExtendedPeriod 
+                ? CompetitionWeekHelper::getWeek3ExtendedSubmissionEndString() 
+                : null,
         ]);
     }
 
@@ -123,6 +131,9 @@ class TransactionController extends Controller
         
         $transactions = $query->paginate($perPage)->withQueryString();
         
+        // Check if we're in Week 3 extended submission period
+        $isExtendedPeriod = \App\Helpers\CompetitionWeekHelper::isInWeek3ExtendedSubmissionPeriod();
+        
         return Inertia::render('Transactions/Index', [
             'transactions' => $transactions,
             'filters' => [
@@ -131,6 +142,10 @@ class TransactionController extends Controller
                 'sort_by' => $sortBy,
                 'sort_order' => $sortOrder,
             ],
+            'isExtendedPeriod' => $isExtendedPeriod,
+            'extendedSubmissionEnd' => $isExtendedPeriod 
+                ? \App\Helpers\CompetitionWeekHelper::getWeek3ExtendedSubmissionEndString() 
+                : null,
         ]);
     }
 

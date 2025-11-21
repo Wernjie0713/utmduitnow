@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
+use App\Helpers\DateHelper;
 
 class TransactionVerificationService
 {
@@ -178,6 +179,7 @@ class TransactionVerificationService
         
         try {
             // Create approved transaction
+            $now = DateHelper::now();
             $transaction = Transaction::create([
                 'user_id' => $userId,
                 'reference_id' => $previewData['data']['reference_id'],
@@ -188,8 +190,8 @@ class TransactionVerificationService
                 'ocr_raw_text' => $previewData['ocr_text'],
                 'parsed_data' => $previewData['data'],
                 'status' => 'approved',
-                'submitted_at' => now(),
-                'approved_at' => now(),
+                'submitted_at' => $now,
+                'approved_at' => $now,
             ]);
 
             // Increment daily submission count
@@ -268,6 +270,7 @@ class TransactionVerificationService
             }
 
             // Step 8: Create approved transaction
+            $now = DateHelper::now();
             $transaction = Transaction::create([
                 'user_id' => $userId,
                 'reference_id' => $parsedData['reference_id'],
@@ -278,8 +281,8 @@ class TransactionVerificationService
                 'ocr_raw_text' => $ocrText,
                 'parsed_data' => $parsedData,
                 'status' => 'approved',
-                'submitted_at' => now(),
-                'approved_at' => now(),
+                'submitted_at' => $now,
+                'approved_at' => $now,
             ]);
 
             // Step 9: Increment daily submission count
@@ -331,7 +334,7 @@ class TransactionVerificationService
     {
         try {
             $transactionDate = Carbon::parse($date);
-            $now = Carbon::now('Asia/Kuala_Lumpur');
+            $now = DateHelper::now('Asia/Kuala_Lumpur');
 
             // Check if transaction date is in the future
             if ($transactionDate->isFuture()) {
@@ -372,15 +375,28 @@ class TransactionVerificationService
             // Check if transaction is from the current competition week
             $isCurrentWeek = $transactionDate->between($boundaries['start'], $boundaries['end']);
 
-            if (!$isCurrentWeek) {
-                $weekRangeString = \App\Helpers\CompetitionWeekHelper::getWeekRangeString();
-                return [
-                    'valid' => false,
-                    'reason' => 'Only receipts from the current competition week are accepted. ' . $weekRangeString . '.'
-                ];
+            if ($isCurrentWeek) {
+                return ['valid' => true, 'reason' => null];
             }
 
-            return ['valid' => true, 'reason' => null];
+            // Special case: Week 3 extended submission period (Nov 24-26, 2025)
+            // Allow Week 3 transactions (Nov 17-23) to be submitted during this period
+            if (\App\Helpers\CompetitionWeekHelper::isInWeek3ExtendedSubmissionPeriod($now)) {
+                if (\App\Helpers\CompetitionWeekHelper::isValidForWeek3ExtendedSubmission($transactionDate, $now)) {
+                    $extendedEndString = \App\Helpers\CompetitionWeekHelper::getWeek3ExtendedSubmissionEndString();
+                    return [
+                        'valid' => true,
+                        'reason' => 'Week 3 extended submission period. Submissions accepted until ' . $extendedEndString . '.'
+                    ];
+                }
+            }
+
+            // Transaction is not from current week and not eligible for extended submission
+            $weekRangeString = \App\Helpers\CompetitionWeekHelper::getWeekRangeString();
+            return [
+                'valid' => false,
+                'reason' => 'Only receipts from the current competition week are accepted. ' . $weekRangeString . '.'
+            ];
             
         } catch (Exception $e) {
             return [
@@ -503,18 +519,19 @@ class TransactionVerificationService
      */
     protected function createRejectedTransaction($userId, $imagePath, $reason, $ocrText = null, $parsedData = null)
     {
+        $now = DateHelper::now();
         $transaction = Transaction::create([
             'user_id' => $userId,
             'reference_id' => $parsedData['reference_id'] ?? 'REJECTED_' . time() . '_' . rand(1000, 9999),
-            'transaction_date' => $parsedData['date'] ?? now()->toDateString(),
-            'transaction_time' => $parsedData['time'] ?? now()->toTimeString(),
+            'transaction_date' => $parsedData['date'] ?? $now->toDateString(),
+            'transaction_time' => $parsedData['time'] ?? $now->toTimeString(),
             'amount' => $parsedData['amount'] ?? 0,
             'receipt_image_path' => $imagePath ?? '',
             'ocr_raw_text' => $ocrText,
             'parsed_data' => $parsedData,
             'status' => 'rejected',
             'rejection_reason' => $reason,
-            'submitted_at' => now(),
+            'submitted_at' => $now,
         ]);
 
         // Still increment daily submission count (to prevent spam)
@@ -534,7 +551,7 @@ class TransactionVerificationService
      */
     protected function incrementDailySubmissionCount($userId)
     {
-        $today = now()->toDateString();
+        $today = DateHelper::today();
         
         DB::table('daily_submission_limits')->updateOrInsert(
             [

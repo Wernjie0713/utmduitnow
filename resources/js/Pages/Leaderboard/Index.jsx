@@ -6,13 +6,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/animate-u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
 import { Button } from '@/Components/ui/button';
 import UserAvatar from '@/Components/UserAvatar';
-import { Trophy, Medal, Award, ArrowLeft } from 'lucide-react';
+import { Trophy, Medal, Award, ArrowLeft, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/Components/ui/alert';
 
 export default function Index({ 
     auth,
+    isExtendedPeriod = false,
     weeklyData,
+    week3Data,
+    week4Data,
     monthlyData,
     allTimeData,
+    extendedSubmissionEnd,
 }) {
     // Check if user is admin
     const isAdmin = auth?.user?.roles?.some(role => role.name === 'admin') || false;
@@ -168,54 +173,123 @@ export default function Index({
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <Tabs defaultValue="weekly" className="w-full">
-                                <TabsList className="grid w-full grid-cols-3">
-                                    <TabsTrigger value="weekly">Weekly</TabsTrigger>
-                                    <TabsTrigger value="monthly">Monthly</TabsTrigger>
-                                    <TabsTrigger value="all-time">All-Time</TabsTrigger>
-                                </TabsList>
+                            {/* Extended Period Notice */}
+                            {isExtendedPeriod && (
+                                <Alert className="mb-6 border-blue-200 bg-blue-50">
+                                    <AlertCircle className="h-4 w-4 text-blue-600" />
+                                    <AlertTitle className="text-blue-900">Week 3 Extended Submission Period</AlertTitle>
+                                    <AlertDescription className="text-blue-800">
+                                        Due to server downtime earlier this week, Week 3 submissions have been extended until{' '}
+                                        <strong>{extendedSubmissionEnd}</strong>. You can submit both Week 3 (Nov 17-23) and Week 4 (Nov 24-30) transactions during this period.
+                                    </AlertDescription>
+                                </Alert>
+                            )}
 
-                                <TabsContent value="weekly" className="mt-6">
-                                    <div className="mb-4">
-                                        <h3 className="text-lg font-semibold">This Week</h3>
-                                        <p className="text-sm text-gray-600">
-                                            {new Date().toLocaleDateString('en-MY', { 
-                                                weekday: 'long',
-                                                year: 'numeric',
-                                                month: 'long',
-                                                day: 'numeric'
-                                            })}
-                                        </p>
-                                    </div>
-                                    {renderLeaderboard(weeklyData)}
-                                </TabsContent>
+                            {isExtendedPeriod ? (
+                                <Tabs defaultValue="week3" className="w-full">
+                                    <TabsList className="grid w-full grid-cols-4">
+                                        <TabsTrigger value="week3">Week 3</TabsTrigger>
+                                        <TabsTrigger value="week4">Week 4</TabsTrigger>
+                                        <TabsTrigger value="monthly">Monthly</TabsTrigger>
+                                        <TabsTrigger value="all-time">All-Time</TabsTrigger>
+                                    </TabsList>
 
-                                <TabsContent value="monthly" className="mt-6">
-                                    <div className="mb-4">
-                                        <h3 className="text-lg font-semibold">This Month</h3>
-                                        <p className="text-sm text-gray-600">
-                                            {new Date().toLocaleDateString('en-MY', {
-                                                month: 'long',
-                                                year: 'numeric'
-                                            })}
-                                        </p>
-                                    </div>
-                                    {renderLeaderboard(monthlyData)}
-                                </TabsContent>
+                                    <TabsContent value="week3" className="mt-6">
+                                        <div className="mb-4">
+                                            <h3 className="text-lg font-semibold">Week 3: November 17 - 23, 2025</h3>
+                                            <p className="text-sm text-gray-600">
+                                                Extended submission until {extendedSubmissionEnd}
+                                            </p>
+                                        </div>
+                                        {renderLeaderboard(week3Data)}
+                                    </TabsContent>
 
-                                <TabsContent value="all-time" className="mt-6">
-                                    <div className="mb-4">
-                                        <h3 className="text-lg font-semibold">All-Time Champions</h3>
-                                        <p className="text-sm text-gray-600">
-                                            {isAdmin 
-                                                ? 'Since the beginning of the competition' 
-                                                : 'Since November 1, 2025'
-                                            }
-                                        </p>
-                                    </div>
-                                    {renderLeaderboard(allTimeData)}
-                                </TabsContent>
-                            </Tabs>
+                                    <TabsContent value="week4" className="mt-6">
+                                        <div className="mb-4">
+                                            <h3 className="text-lg font-semibold">Week 4: November 24 - 30, 2025</h3>
+                                            <p className="text-sm text-gray-600">
+                                                Current week
+                                            </p>
+                                        </div>
+                                        {renderLeaderboard(week4Data)}
+                                    </TabsContent>
+
+                                    <TabsContent value="monthly" className="mt-6">
+                                        <div className="mb-4">
+                                            <h3 className="text-lg font-semibold">This Month</h3>
+                                            <p className="text-sm text-gray-600">
+                                                {new Date().toLocaleDateString('en-MY', {
+                                                    month: 'long',
+                                                    year: 'numeric'
+                                                })}
+                                            </p>
+                                        </div>
+                                        {renderLeaderboard(monthlyData)}
+                                    </TabsContent>
+
+                                    <TabsContent value="all-time" className="mt-6">
+                                        <div className="mb-4">
+                                            <h3 className="text-lg font-semibold">All-Time Champions</h3>
+                                            <p className="text-sm text-gray-600">
+                                                {isAdmin 
+                                                    ? 'Since the beginning of the competition' 
+                                                    : 'Since November 1, 2025'
+                                                }
+                                            </p>
+                                        </div>
+                                        {renderLeaderboard(allTimeData)}
+                                    </TabsContent>
+                                </Tabs>
+                            ) : (
+                                <Tabs defaultValue="weekly" className="w-full">
+                                    <TabsList className="grid w-full grid-cols-3">
+                                        <TabsTrigger value="weekly">Weekly</TabsTrigger>
+                                        <TabsTrigger value="monthly">Monthly</TabsTrigger>
+                                        <TabsTrigger value="all-time">All-Time</TabsTrigger>
+                                    </TabsList>
+
+                                    <TabsContent value="weekly" className="mt-6">
+                                        <div className="mb-4">
+                                            <h3 className="text-lg font-semibold">This Week</h3>
+                                            <p className="text-sm text-gray-600">
+                                                {new Date().toLocaleDateString('en-MY', { 
+                                                    weekday: 'long',
+                                                    year: 'numeric',
+                                                    month: 'long',
+                                                    day: 'numeric'
+                                                })}
+                                            </p>
+                                        </div>
+                                        {renderLeaderboard(weeklyData)}
+                                    </TabsContent>
+
+                                    <TabsContent value="monthly" className="mt-6">
+                                        <div className="mb-4">
+                                            <h3 className="text-lg font-semibold">This Month</h3>
+                                            <p className="text-sm text-gray-600">
+                                                {new Date().toLocaleDateString('en-MY', {
+                                                    month: 'long',
+                                                    year: 'numeric'
+                                                })}
+                                            </p>
+                                        </div>
+                                        {renderLeaderboard(monthlyData)}
+                                    </TabsContent>
+
+                                    <TabsContent value="all-time" className="mt-6">
+                                        <div className="mb-4">
+                                            <h3 className="text-lg font-semibold">All-Time Champions</h3>
+                                            <p className="text-sm text-gray-600">
+                                                {isAdmin 
+                                                    ? 'Since the beginning of the competition' 
+                                                    : 'Since November 1, 2025'
+                                                }
+                                            </p>
+                                        </div>
+                                        {renderLeaderboard(allTimeData)}
+                                    </TabsContent>
+                                </Tabs>
+                            )}
                         </CardContent>
                     </Card>
                 </div>

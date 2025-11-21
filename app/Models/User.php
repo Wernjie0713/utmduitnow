@@ -9,6 +9,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Silber\Bouncer\Database\HasRolesAndAbilities;
+use App\Helpers\DateHelper;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -75,7 +76,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function canSubmitToday()
     {
-        $today = now()->toDateString();
+        $today = DateHelper::today();
         $maxSubmissions = config('app.max_submissions_per_day', 100);
         
         $todaySubmissions = DB::table('daily_submission_limits')
@@ -88,7 +89,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function getTodaySubmissionCount()
     {
-        $today = now()->toDateString();
+        $today = DateHelper::today();
         
         return DB::table('daily_submission_limits')
             ->where('user_id', $this->id)

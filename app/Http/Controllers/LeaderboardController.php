@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\LeaderboardService;
+use App\Helpers\CompetitionWeekHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -24,15 +25,37 @@ class LeaderboardController extends Controller
         $userId = Auth::id();
         $isAdmin = Auth::user()->roles->contains('name', 'admin');
         
+        // Check if we're in Week 3 extended submission period
+        $isExtendedPeriod = CompetitionWeekHelper::isInWeek3ExtendedSubmissionPeriod();
+        
+        if ($isExtendedPeriod) {
+            // During extended period, show Week 3 and Week 4 leaderboards
+            $week3Data = $this->leaderboardService->getTop20WithUserPositionForWeek($userId, 3);
+            $week4Data = $this->leaderboardService->getTop20WithUserPositionForWeek($userId, 4);
+            $monthlyData = $this->leaderboardService->getTop20WithUserPosition($userId, 'monthly');
+            $allTimeData = $this->leaderboardService->getTop20WithUserPosition($userId, 'all_time', null, null, $isAdmin);
+
+            return Inertia::render('Leaderboard/Index', [
+                'isExtendedPeriod' => true,
+                'week3Data' => $week3Data,
+                'week4Data' => $week4Data,
+                'monthlyData' => $monthlyData,
+                'allTimeData' => $allTimeData,
+                'extendedSubmissionEnd' => CompetitionWeekHelper::getWeek3ExtendedSubmissionEndString(),
+            ]);
+        } else {
+            // Normal period, show current week leaderboard
         $weeklyData = $this->leaderboardService->getTop20WithUserPosition($userId, 'weekly');
         $monthlyData = $this->leaderboardService->getTop20WithUserPosition($userId, 'monthly');
         $allTimeData = $this->leaderboardService->getTop20WithUserPosition($userId, 'all_time', null, null, $isAdmin);
 
         return Inertia::render('Leaderboard/Index', [
+                'isExtendedPeriod' => false,
             'weeklyData' => $weeklyData,
             'monthlyData' => $monthlyData,
             'allTimeData' => $allTimeData,
         ]);
+        }
     }
 
     /**

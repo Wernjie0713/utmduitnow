@@ -29,6 +29,18 @@ class LeaderboardService
     }
 
     /**
+     * Get leaderboard for a specific week number
+     * 
+     * @param int $weekNumber The week number (1, 2, 3, etc.)
+     * @return \Illuminate\Support\Collection
+     */
+    public function getWeekLeaderboard(int $weekNumber)
+    {
+        $boundaries = CompetitionWeekHelper::getWeekBoundaries($weekNumber);
+        return $this->getLeaderboard('weekly', $boundaries['start'], $boundaries['end']);
+    }
+
+    /**
      * Get monthly leaderboard
      * 
      * @param int|null $month Month number (1-12), defaults to current month
@@ -214,6 +226,31 @@ class LeaderboardService
             'all_time' => $this->getAllTimeLeaderboard($adminView),
             default => collect([]),
         };
+        
+        $top20 = $leaderboard->take(20);
+        $userEntry = $leaderboard->firstWhere('user_id', $userId);
+        
+        return [
+            'top20' => $top20,
+            'user_position' => $userEntry ? [
+                'rank' => $userEntry->rank,
+                'transaction_count' => $userEntry->transaction_count,
+                'user' => $userEntry->user,
+            ] : null,
+            'total_users' => $leaderboard->count(),
+        ];
+    }
+
+    /**
+     * Get Top 20 leaderboard with current user's position for a specific week
+     * 
+     * @param int $userId
+     * @param int $weekNumber
+     * @return array
+     */
+    public function getTop20WithUserPositionForWeek($userId, int $weekNumber)
+    {
+        $leaderboard = $this->getWeekLeaderboard($weekNumber);
         
         $top20 = $leaderboard->take(20);
         $userEntry = $leaderboard->firstWhere('user_id', $userId);

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\LeaderboardService;
+use App\Helpers\CompetitionWeekHelper;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -39,37 +40,79 @@ class DashboardController extends Controller
      */
     private function studentDashboard($user)
     {
-        // Get Top 20 leaderboard data with user position
-        // For students, all_time shows only from Nov 1, 2025 onwards
-        $weeklyData = $this->leaderboardService->getTop20WithUserPosition($user->id, 'weekly');
-        $monthlyData = $this->leaderboardService->getTop20WithUserPosition($user->id, 'monthly');
-        $allTimeData = $this->leaderboardService->getTop20WithUserPosition($user->id, 'all_time', null, null, false);
+        // Check if we're in Week 3 extended submission period
+        $isExtendedPeriod = CompetitionWeekHelper::isInWeek3ExtendedSubmissionPeriod();
         
-        // Get student's personal stats
-        $stats = [
-            'total_submissions' => $user->transactions()->count(),
-            'today_submissions' => $user->getTodaySubmissionCount(),
-            'can_submit_today' => $user->canSubmitToday(),
-            'max_submissions_per_day' => config('app.max_submissions_per_day'),
+        if ($isExtendedPeriod) {
+            // During extended period, show Week 3 and Week 4 leaderboards
+            $week3Data = $this->leaderboardService->getTop20WithUserPositionForWeek($user->id, 3);
+            $week4Data = $this->leaderboardService->getTop20WithUserPositionForWeek($user->id, 4);
+            $monthlyData = $this->leaderboardService->getTop20WithUserPosition($user->id, 'monthly');
+            $allTimeData = $this->leaderboardService->getTop20WithUserPosition($user->id, 'all_time', null, null, false);
             
-            // Rankings
-            'weekly_rank' => $weeklyData['user_position']['rank'] ?? null,
-            'weekly_total' => $weeklyData['total_users'] ?? 0,
-            'monthly_rank' => $monthlyData['user_position']['rank'] ?? null,
-            'monthly_total' => $monthlyData['total_users'] ?? 0,
-            'alltime_rank' => $allTimeData['user_position']['rank'] ?? null,
-            'alltime_total' => $allTimeData['total_users'] ?? 0,
-        ];
-        
-        return Inertia::render('Dashboard', [
-            'stats' => $stats,
-            'leaderboards' => [
-                'weekly' => $weeklyData,
-                'monthly' => $monthlyData,
-                'allTime' => $allTimeData,
-            ],
-            'showCompetitionAnnouncement' => $this->shouldShowCompetitionAnnouncement($user),
-        ]);
+            // Get student's personal stats
+            $stats = [
+                'total_submissions' => $user->transactions()->count(),
+                'today_submissions' => $user->getTodaySubmissionCount(),
+                'can_submit_today' => $user->canSubmitToday(),
+                'max_submissions_per_day' => config('app.max_submissions_per_day'),
+                
+                // Rankings - use Week 4 for weekly rank during extended period
+                'weekly_rank' => $week4Data['user_position']['rank'] ?? null,
+                'weekly_total' => $week4Data['total_users'] ?? 0,
+                'monthly_rank' => $monthlyData['user_position']['rank'] ?? null,
+                'monthly_total' => $monthlyData['total_users'] ?? 0,
+                'alltime_rank' => $allTimeData['user_position']['rank'] ?? null,
+                'alltime_total' => $allTimeData['total_users'] ?? 0,
+            ];
+            
+            return Inertia::render('Dashboard', [
+                'stats' => $stats,
+                'isExtendedPeriod' => true,
+                'leaderboards' => [
+                    'week3' => $week3Data,
+                    'week4' => $week4Data,
+                    'monthly' => $monthlyData,
+                    'allTime' => $allTimeData,
+                ],
+                'extendedSubmissionEnd' => CompetitionWeekHelper::getWeek3ExtendedSubmissionEndString(),
+                'showCompetitionAnnouncement' => $this->shouldShowCompetitionAnnouncement($user),
+            ]);
+        } else {
+            // Normal period, show current week leaderboard
+            // Get Top 20 leaderboard data with user position
+            // For students, all_time shows only from Nov 1, 2025 onwards
+            $weeklyData = $this->leaderboardService->getTop20WithUserPosition($user->id, 'weekly');
+            $monthlyData = $this->leaderboardService->getTop20WithUserPosition($user->id, 'monthly');
+            $allTimeData = $this->leaderboardService->getTop20WithUserPosition($user->id, 'all_time', null, null, false);
+            
+            // Get student's personal stats
+            $stats = [
+                'total_submissions' => $user->transactions()->count(),
+                'today_submissions' => $user->getTodaySubmissionCount(),
+                'can_submit_today' => $user->canSubmitToday(),
+                'max_submissions_per_day' => config('app.max_submissions_per_day'),
+                
+                // Rankings
+                'weekly_rank' => $weeklyData['user_position']['rank'] ?? null,
+                'weekly_total' => $weeklyData['total_users'] ?? 0,
+                'monthly_rank' => $monthlyData['user_position']['rank'] ?? null,
+                'monthly_total' => $monthlyData['total_users'] ?? 0,
+                'alltime_rank' => $allTimeData['user_position']['rank'] ?? null,
+                'alltime_total' => $allTimeData['total_users'] ?? 0,
+            ];
+            
+            return Inertia::render('Dashboard', [
+                'stats' => $stats,
+                'isExtendedPeriod' => false,
+                'leaderboards' => [
+                    'weekly' => $weeklyData,
+                    'monthly' => $monthlyData,
+                    'allTime' => $allTimeData,
+                ],
+                'showCompetitionAnnouncement' => $this->shouldShowCompetitionAnnouncement($user),
+            ]);
+        }
     }
 
     /**

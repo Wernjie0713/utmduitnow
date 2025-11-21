@@ -26,7 +26,7 @@ const loadingStates = [
 // Minimum loader display time (6 steps × 0.5s = 3s)
 const MIN_LOADER_TIME = 3000;
 
-export default function Submit({ todaySubmissions, maxSubmissions, canSubmit }) {
+export default function Submit({ todaySubmissions, maxSubmissions, canSubmit, isExtendedPeriod = false, extendedSubmissionEnd }) {
     const [preview, setPreview] = useState(null);
     const [previewData, setPreviewData] = useState(null);
     const [showModal, setShowModal] = useState(false);
@@ -139,6 +139,18 @@ export default function Submit({ todaySubmissions, maxSubmissions, canSubmit }) 
 
             <div className="py-12">
                 <div className="mx-auto max-w-3xl px-6 sm:px-6 md:px-2 lg:px-0">
+                    {/* Extended Period Notice */}
+                    {isExtendedPeriod && (
+                        <Alert className="mb-6 border-blue-200 bg-blue-50">
+                            <AlertCircle className="h-4 w-4 text-blue-600" />
+                            <AlertTitle className="text-blue-900">Week 3 Extended Submission Period</AlertTitle>
+                            <AlertDescription className="text-blue-800">
+                                Due to server downtime earlier this week, Week 3 submissions have been extended until{' '}
+                                <strong>{extendedSubmissionEnd}</strong>. You can submit both Week 3 (Nov 17-23) and Week 4 (Nov 24-30) transactions during this period.
+                            </AlertDescription>
+                        </Alert>
+                    )}
+
                     {/* AI-Powered Header */}
                     <div className="mb-6">
                         <div className="flex items-center gap-2 mb-3">

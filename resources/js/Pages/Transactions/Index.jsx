@@ -45,7 +45,7 @@ import {
 } from '@tanstack/react-table';
 import { columns } from './columns';
 
-export default function Index({ transactions, filters }) {
+export default function Index({ transactions, filters, isExtendedPeriod = false, extendedSubmissionEnd }) {
     const [columnVisibility, setColumnVisibility] = useState({});
     const [searchValue, setSearchValue] = useState(filters?.search || '');
     
@@ -111,6 +111,18 @@ export default function Index({ transactions, filters }) {
                     <div className="bg-white">
                         {/* Content */}
                         <div className="p-6">
+                            {/* Extended Period Notice */}
+                            {isExtendedPeriod && (
+                                <Alert className="mb-6 border-blue-200 bg-blue-50">
+                                    <AlertCircle className="h-4 w-4 text-blue-600" />
+                                    <AlertTitle className="text-blue-900">Week 3 Extended Submission Period</AlertTitle>
+                                    <AlertDescription className="text-blue-800">
+                                        Due to server downtime earlier this week, Week 3 submissions have been extended until{' '}
+                                        <strong>{extendedSubmissionEnd}</strong>. You can submit both Week 3 (Nov 17-23) and Week 4 (Nov 24-30) transactions during this period.
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+
                             {/* Toolbar */}
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
                                 {/* Search */}

@@ -3,6 +3,7 @@
 namespace App\Helpers;
 
 use Carbon\Carbon;
+use App\Helpers\DateHelper;
 
 class CompetitionWeekHelper
 {
@@ -20,6 +21,12 @@ class CompetitionWeekHelper
     const COMPETITION_END_DATE = '2025-12-28 23:59:59';
 
     /**
+     * Week 3 extended submission period
+     * Due to server downtime, Week 3 submissions are extended until Nov 26, 2025 11:59 PM
+     */
+    const WEEK_3_EXTENDED_SUBMISSION_END = '2025-11-26 23:59:59';
+
+    /**
      * Get the current competition week number
      * 
      * @param Carbon|null $date The date to check (defaults to now)
@@ -27,7 +34,7 @@ class CompetitionWeekHelper
      */
     public static function getCurrentWeekNumber(?Carbon $date = null): ?int
     {
-        $date = $date ?? Carbon::now('Asia/Kuala_Lumpur');
+        $date = $date ?? DateHelper::now('Asia/Kuala_Lumpur');
         $competitionStart = Carbon::parse(self::COMPETITION_START_DATE, 'Asia/Kuala_Lumpur');
 
         // Before competition starts
@@ -63,7 +70,7 @@ class CompetitionWeekHelper
      */
     public static function getCurrentWeekBoundaries(?Carbon $date = null): ?array
     {
-        $date = $date ?? Carbon::now('Asia/Kuala_Lumpur');
+        $date = $date ?? DateHelper::now('Asia/Kuala_Lumpur');
         $weekNumber = self::getCurrentWeekNumber($date);
 
         if ($weekNumber === null) {
@@ -154,7 +161,7 @@ class CompetitionWeekHelper
      */
     public static function hasCompetitionEnded(?Carbon $date = null): bool
     {
-        $date = $date ?? Carbon::now('Asia/Kuala_Lumpur');
+        $date = $date ?? DateHelper::now('Asia/Kuala_Lumpur');
         $competitionEnd = Carbon::parse(self::COMPETITION_END_DATE, 'Asia/Kuala_Lumpur');
 
         return $date->gt($competitionEnd);
@@ -183,6 +190,56 @@ class CompetitionWeekHelper
     {
         $competitionEnd = Carbon::parse(self::COMPETITION_END_DATE, 'Asia/Kuala_Lumpur');
         return $competitionEnd->format('F d, Y \a\t g:i A');
+    }
+
+    /**
+     * Check if we are currently in the Week 3 extended submission period
+     * Week 3 extended submission: Nov 24 - Nov 26, 2025 11:59 PM
+     * 
+     * @param Carbon|null $date The date to check (defaults to now)
+     * @return bool
+     */
+    public static function isInWeek3ExtendedSubmissionPeriod(?Carbon $date = null): bool
+    {
+        $date = $date ?? DateHelper::now('Asia/Kuala_Lumpur');
+        $week3ExtendedStart = Carbon::parse('2025-11-24 00:00:00', 'Asia/Kuala_Lumpur');
+        $week3ExtendedEnd = Carbon::parse(self::WEEK_3_EXTENDED_SUBMISSION_END, 'Asia/Kuala_Lumpur');
+
+        return $date->between($week3ExtendedStart, $week3ExtendedEnd);
+    }
+
+    /**
+     * Check if a transaction date is valid for Week 3 extended submission
+     * Week 3 period: Nov 17-23, 2025
+     * Extended submission allowed until: Nov 26, 2025 11:59 PM
+     * 
+     * @param Carbon $transactionDate The transaction date from the receipt
+     * @param Carbon|null $currentDate The current date (defaults to now)
+     * @return bool
+     */
+    public static function isValidForWeek3ExtendedSubmission(Carbon $transactionDate, ?Carbon $currentDate = null): bool
+    {
+        $currentDate = $currentDate ?? DateHelper::now('Asia/Kuala_Lumpur');
+        
+        // Check if we're still in the extended submission period
+        if (!$currentDate->lte(Carbon::parse(self::WEEK_3_EXTENDED_SUBMISSION_END, 'Asia/Kuala_Lumpur'))) {
+            return false;
+        }
+
+        // Check if transaction date is within Week 3 period (Nov 17-23)
+        $week3Boundaries = self::getWeekBoundaries(3);
+        return $transactionDate->between($week3Boundaries['start'], $week3Boundaries['end']);
+    }
+
+    /**
+     * Get Week 3 extended submission end date as a formatted string
+     * 
+     * @return string e.g., "November 26, 2025 at 11:59 PM"
+     */
+    public static function getWeek3ExtendedSubmissionEndString(): string
+    {
+        $endDate = Carbon::parse(self::WEEK_3_EXTENDED_SUBMISSION_END, 'Asia/Kuala_Lumpur');
+        return $endDate->format('F d, Y \a\t g:i A');
     }
 }
 
