@@ -48,7 +48,7 @@ Route::middleware(['auth', 'verified', 'profile.completed', 'account.not.frozen'
 });
 
 // Admin Routes
-Route::middleware(['auth', 'verified', 'profile.completed', 'account.not.frozen'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'verified', 'profile.completed', 'account.not.frozen', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/custom-range', [AdminDashboardController::class, 'getCustomRangeData'])->name('dashboard.custom');
     Route::get('/users', [AdminDashboardController::class, 'users'])->name('users');
