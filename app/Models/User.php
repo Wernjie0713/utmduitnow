@@ -34,6 +34,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'google_id',
         'profile_completed',
         'has_seen_competition_announcement',
+        'is_suspicious',
+        'is_frozen',
     ];
 
     /**
@@ -56,6 +58,8 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_suspicious' => 'boolean',
+            'is_frozen' => 'boolean',
         ];
     }
 

@@ -85,7 +85,7 @@ export default function FullRankings({ auth }) {
         fetchData();
     }, [pagination.pageIndex, pagination.pageSize, search, period]);
     
-    const fetchData = async () => {
+              const fetchData = async () => {
         setIsLoading(true);
         try {
             const params = new URLSearchParams({

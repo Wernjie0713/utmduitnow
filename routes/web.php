@@ -14,10 +14,10 @@ Route::get('/', function () {
 })->name('welcome');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware(['auth', 'verified', 'profile.completed'])
+    ->middleware(['auth', 'verified', 'profile.completed', 'account.not.frozen'])
     ->name('dashboard');
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'account.not.frozen'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -34,7 +34,7 @@ Route::middleware('auth')->group(function () {
 });
 
 // Student Routes (Authenticated)
-Route::middleware(['auth', 'verified', 'profile.completed'])->group(function () {
+Route::middleware(['auth', 'verified', 'profile.completed', 'account.not.frozen'])->group(function () {
     Route::get('/transactions/submit', [TransactionController::class, 'index'])->name('transactions.submit');
     Route::post('/transactions/preview', [TransactionController::class, 'preview'])->name('transactions.preview');
     Route::post('/transactions', [TransactionController::class, 'store'])->name('transactions.store');
@@ -48,7 +48,7 @@ Route::middleware(['auth', 'verified', 'profile.completed'])->group(function () 
 });
 
 // Admin Routes
-Route::middleware(['auth', 'verified', 'profile.completed'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'verified', 'profile.completed', 'account.not.frozen'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/custom-range', [AdminDashboardController::class, 'getCustomRangeData'])->name('dashboard.custom');
     Route::get('/users', [AdminDashboardController::class, 'users'])->name('users');

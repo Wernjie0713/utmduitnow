@@ -91,7 +91,11 @@ class LeaderboardService
     {
         $query = Transaction::query()
             ->where('status', 'approved')
-            ->with(['user.faculty']);
+            ->with(['user.faculty'])
+            ->whereHas('user', function($q) {
+                // Exclude suspicious users from leaderboards
+                $q->where('is_suspicious', false);
+            });
 
         // Apply date filter if provided
         if ($startDate && $endDate) {

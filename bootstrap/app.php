@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'profile.completed' => \App\Http\Middleware\EnsureProfileCompleted::class,
+            'account.not.frozen' => \App\Http\Middleware\EnsureAccountNotFrozen::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
