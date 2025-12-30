@@ -24,13 +24,13 @@ class DashboardController extends Controller
     {
         /** @var \App\Models\User $user */
         $user = $request->user();
-        
+
         // Check if user is admin
         if ($user->isAn('admin')) {
             // Redirect to admin dashboard
             return redirect()->route('admin.dashboard');
         }
-        
+
         // For students, show personal stats + leaderboard
         return $this->studentDashboard($user);
     }
@@ -42,21 +42,21 @@ class DashboardController extends Controller
     {
         // Check if we're in Week 3 extended submission period
         $isExtendedPeriod = CompetitionWeekHelper::isInWeek3ExtendedSubmissionPeriod();
-        
+
         if ($isExtendedPeriod) {
             // During extended period, show Week 3 and Week 4 leaderboards
             $week3Data = $this->leaderboardService->getTop20WithUserPositionForWeek($user->id, 3);
             $week4Data = $this->leaderboardService->getTop20WithUserPositionForWeek($user->id, 4);
             $monthlyData = $this->leaderboardService->getTop20WithUserPosition($user->id, 'monthly');
             $allTimeData = $this->leaderboardService->getTop20WithUserPosition($user->id, 'all_time', null, null, false);
-            
+
             // Get student's personal stats
             $stats = [
                 'total_submissions' => $user->transactions()->count(),
                 'today_submissions' => $user->getTodaySubmissionCount(),
                 'can_submit_today' => $user->canSubmitToday(),
                 'max_submissions_per_day' => config('app.max_submissions_per_day'),
-                
+
                 // Rankings - use Week 4 for weekly rank during extended period
                 'weekly_rank' => $week4Data['user_position']['rank'] ?? null,
                 'weekly_total' => $week4Data['total_users'] ?? 0,
@@ -65,7 +65,7 @@ class DashboardController extends Controller
                 'alltime_rank' => $allTimeData['user_position']['rank'] ?? null,
                 'alltime_total' => $allTimeData['total_users'] ?? 0,
             ];
-            
+
             return Inertia::render('Dashboard', [
                 'stats' => $stats,
                 'isExtendedPeriod' => true,
@@ -85,14 +85,14 @@ class DashboardController extends Controller
             $weeklyData = $this->leaderboardService->getTop20WithUserPosition($user->id, 'weekly');
             $monthlyData = $this->leaderboardService->getTop20WithUserPosition($user->id, 'monthly');
             $allTimeData = $this->leaderboardService->getTop20WithUserPosition($user->id, 'all_time', null, null, false);
-            
+
             // Get student's personal stats
             $stats = [
                 'total_submissions' => $user->transactions()->count(),
                 'today_submissions' => $user->getTodaySubmissionCount(),
                 'can_submit_today' => $user->canSubmitToday(),
                 'max_submissions_per_day' => config('app.max_submissions_per_day'),
-                
+
                 // Rankings
                 'weekly_rank' => $weeklyData['user_position']['rank'] ?? null,
                 'weekly_total' => $weeklyData['total_users'] ?? 0,
@@ -101,7 +101,7 @@ class DashboardController extends Controller
                 'alltime_rank' => $allTimeData['user_position']['rank'] ?? null,
                 'alltime_total' => $allTimeData['total_users'] ?? 0,
             ];
-            
+
             return Inertia::render('Dashboard', [
                 'stats' => $stats,
                 'isExtendedPeriod' => false,
@@ -131,7 +131,7 @@ class DashboardController extends Controller
         // Only show to users created on or before Nov 1, 2025
         // New users after Nov 1 don't need to see this announcement
         $announcementCutoffDate = Carbon::parse('2025-11-01 23:59:59', 'Asia/Kuala_Lumpur');
-        
+
         return $user->created_at->lte($announcementCutoffDate);
     }
 
@@ -142,7 +142,7 @@ class DashboardController extends Controller
     {
         /** @var \App\Models\User $user */
         $user = $request->user();
-        
+
         $user->update([
             'has_seen_competition_announcement' => true,
         ]);
@@ -151,6 +151,4 @@ class DashboardController extends Controller
         // This will refresh the page and the modal won't show anymore
         return redirect()->back()->with('success', 'Announcement acknowledged successfully.');
     }
-    
 }
-

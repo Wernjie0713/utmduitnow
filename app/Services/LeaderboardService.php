@@ -19,7 +19,7 @@ class LeaderboardService
     public function getWeeklyLeaderboard()
     {
         $boundaries = CompetitionWeekHelper::getCurrentWeekBoundaries();
-        
+
         if ($boundaries === null) {
             // Competition hasn't started yet, return empty collection
             return collect([]);
@@ -104,7 +104,7 @@ class LeaderboardService
         $query = Transaction::query()
             ->where('status', 'approved')
             ->with(['user.faculty'])
-            ->whereHas('user', function($q) {
+            ->whereHas('user', function ($q) {
                 // Exclude suspicious users from leaderboards
                 $q->where('is_suspicious', false);
             });
@@ -133,7 +133,7 @@ class LeaderboardService
         $rank = 1;
         $previousCount = null;
         $previousRank = 1;
-        
+
         foreach ($leaderboard as $index => $entry) {
             if ($previousCount === $entry->transaction_count) {
                 // Same count as previous, keep the same rank
@@ -142,7 +142,7 @@ class LeaderboardService
                 $entry->rank = $rank;
                 $previousRank = $rank;
             }
-            
+
             $previousCount = $entry->transaction_count;
             $rank++;
         }
@@ -186,10 +186,10 @@ class LeaderboardService
      * @param bool $adminView
      * @return array|null
      */
-    public function getUserPosition($userId, $periodType, $month = null, $year = null, $adminView = true)
+    public function getUserPosition($userId, $periodType, $month = null, $year = null, $adminView = true, $week = null)
     {
         $leaderboard = match ($periodType) {
-            'weekly' => $this->getWeeklyLeaderboard(),
+            'weekly' => $week ? $this->getWeekLeaderboard($week) : $this->getWeeklyLeaderboard(),
             'monthly' => $this->getMonthlyLeaderboard($month, $year),
             'all_time' => $this->getAllTimeLeaderboard($adminView),
             default => collect([]),
@@ -218,18 +218,18 @@ class LeaderboardService
      * @param bool $adminView
      * @return array
      */
-    public function getTop20WithUserPosition($userId, $periodType, $month = null, $year = null, $adminView = true)
+    public function getTop20WithUserPosition($userId, $periodType, $month = null, $year = null, $adminView = true, $week = null)
     {
         $leaderboard = match ($periodType) {
-            'weekly' => $this->getWeeklyLeaderboard(),
+            'weekly' => $week ? $this->getWeekLeaderboard($week) : $this->getWeeklyLeaderboard(),
             'monthly' => $this->getMonthlyLeaderboard($month, $year),
             'all_time' => $this->getAllTimeLeaderboard($adminView),
             default => collect([]),
         };
-        
+
         $top20 = $leaderboard->take(20);
         $userEntry = $leaderboard->firstWhere('user_id', $userId);
-        
+
         return [
             'top20' => $top20,
             'user_position' => $userEntry ? [
@@ -251,10 +251,10 @@ class LeaderboardService
     public function getTop20WithUserPositionForWeek($userId, int $weekNumber)
     {
         $leaderboard = $this->getWeekLeaderboard($weekNumber);
-        
+
         $top20 = $leaderboard->take(20);
         $userEntry = $leaderboard->firstWhere('user_id', $userId);
-        
+
         return [
             'top20' => $top20,
             'user_position' => $userEntry ? [
@@ -278,26 +278,26 @@ class LeaderboardService
      * @param bool $adminView
      * @return array
      */
-    public function getPaginatedLeaderboard($periodType, $page = 1, $perPage = 50, $search = null, $month = null, $year = null, $adminView = true)
+    public function getPaginatedLeaderboard($periodType, $page = 1, $perPage = 50, $search = null, $month = null, $year = null, $adminView = true, $week = null)
     {
         $leaderboard = match ($periodType) {
-            'weekly' => $this->getWeeklyLeaderboard(),
+            'weekly' => $week ? $this->getWeekLeaderboard($week) : $this->getWeeklyLeaderboard(),
             'monthly' => $this->getMonthlyLeaderboard($month, $year),
             'all_time' => $this->getAllTimeLeaderboard($adminView),
             default => collect([]),
         };
-        
+
         // Apply search filter
         if ($search) {
-            $leaderboard = $leaderboard->filter(function($entry) use ($search) {
+            $leaderboard = $leaderboard->filter(function ($entry) use ($search) {
                 return stripos($entry->user->name, $search) !== false;
             });
         }
-        
+
         // Manual pagination
         $total = $leaderboard->count();
         $data = $leaderboard->slice(($page - 1) * $perPage, $perPage)->values();
-        
+
         return [
             'data' => $data,
             'current_page' => $page,
@@ -307,4 +307,3 @@ class LeaderboardService
         ];
     }
 }
-

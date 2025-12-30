@@ -202,12 +202,12 @@ export default function Index({ transactions, filters, isExtendedPeriod = false,
                             {transactions.data.length === 0 ? (
                                 <div className="text-center py-12 text-gray-500">
                                     <p>No transactions found.</p>
-                                    <Link
+                                    {/* <Link
                                         href={route('transactions.submit')}
                                         className="mt-4 inline-block text-gray-900 hover:text-gray-700 font-medium"
                                     >
                                         Submit your first transaction
-                                    </Link>
+                                    </Link> */}
                                 </div>
                             ) : (
                                 <>

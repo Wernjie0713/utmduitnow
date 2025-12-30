@@ -24,15 +24,22 @@ class LeaderboardController extends Controller
     {
         $userId = Auth::id();
         $isAdmin = Auth::user()->roles->contains('name', 'admin');
-        
+
         // Check if we're in Week 3 extended submission period
         $isExtendedPeriod = CompetitionWeekHelper::isInWeek3ExtendedSubmissionPeriod();
-        
+
+        // Check if competition has ended
+        $hasEnded = CompetitionWeekHelper::hasCompetitionEnded();
+
+        $selectedWeek = $request->input('week');
+        $selectedMonth = $request->input('month');
+        $selectedYear = $request->input('year');
+
         if ($isExtendedPeriod) {
             // During extended period, show Week 3 and Week 4 leaderboards
             $week3Data = $this->leaderboardService->getTop20WithUserPositionForWeek($userId, 3);
             $week4Data = $this->leaderboardService->getTop20WithUserPositionForWeek($userId, 4);
-            $monthlyData = $this->leaderboardService->getTop20WithUserPosition($userId, 'monthly');
+            $monthlyData = $this->leaderboardService->getTop20WithUserPosition($userId, 'monthly', $selectedMonth, $selectedYear);
             $allTimeData = $this->leaderboardService->getTop20WithUserPosition($userId, 'all_time', null, null, $isAdmin);
 
             return Inertia::render('Leaderboard/Index', [
@@ -42,19 +49,25 @@ class LeaderboardController extends Controller
                 'monthlyData' => $monthlyData,
                 'allTimeData' => $allTimeData,
                 'extendedSubmissionEnd' => CompetitionWeekHelper::getWeek3ExtendedSubmissionEndString(),
+                'hasEnded' => $hasEnded,
+                'activeTab' => $selectedMonth ? 'monthly' : 'week3',
             ]);
         } else {
-            // Normal period, show current week leaderboard
-        $weeklyData = $this->leaderboardService->getTop20WithUserPosition($userId, 'weekly');
-        $monthlyData = $this->leaderboardService->getTop20WithUserPosition($userId, 'monthly');
-        $allTimeData = $this->leaderboardService->getTop20WithUserPosition($userId, 'all_time', null, null, $isAdmin);
+            // Normal period or after competition ended
+            $weeklyData = $this->leaderboardService->getTop20WithUserPosition($userId, 'weekly', null, null, $isAdmin, $selectedWeek);
+            $monthlyData = $this->leaderboardService->getTop20WithUserPosition($userId, 'monthly', $selectedMonth, $selectedYear);
+            $allTimeData = $this->leaderboardService->getTop20WithUserPosition($userId, 'all_time', null, null, $isAdmin);
 
-        return Inertia::render('Leaderboard/Index', [
+            return Inertia::render('Leaderboard/Index', [
                 'isExtendedPeriod' => false,
-            'weeklyData' => $weeklyData,
-            'monthlyData' => $monthlyData,
-            'allTimeData' => $allTimeData,
-        ]);
+                'weeklyData' => $weeklyData,
+                'monthlyData' => $monthlyData,
+                'allTimeData' => $allTimeData,
+                'hasEnded' => $hasEnded,
+                'selectedWeek' => $selectedWeek,
+                'selectedMonth' => $selectedMonth,
+                'activeTab' => $selectedMonth ? 'monthly' : 'weekly',
+            ]);
         }
     }
 
@@ -64,7 +77,7 @@ class LeaderboardController extends Controller
     public function weekly()
     {
         $leaderboard = $this->leaderboardService->getWeeklyLeaderboard();
-        
+
         return response()->json([
             'leaderboard' => $leaderboard,
             'period' => 'weekly',
@@ -78,9 +91,9 @@ class LeaderboardController extends Controller
     {
         $month = $request->input('month', now()->month);
         $year = $request->input('year', now()->year);
-        
+
         $leaderboard = $this->leaderboardService->getMonthlyLeaderboard($month, $year);
-        
+
         return response()->json([
             'leaderboard' => $leaderboard,
             'period' => 'monthly',
@@ -96,7 +109,7 @@ class LeaderboardController extends Controller
     {
         $isAdmin = Auth::user()->roles->contains('name', 'admin');
         $leaderboard = $this->leaderboardService->getAllTimeLeaderboard($isAdmin);
-        
+
         return response()->json([
             'leaderboard' => $leaderboard,
             'period' => 'all_time',
@@ -124,13 +137,21 @@ class LeaderboardController extends Controller
         $search = $request->input('search', null);
         $month = $request->input('month', now()->month);
         $year = $request->input('year', now()->year);
-        
+        $week = $request->input('week');
+
         $paginatedData = $this->leaderboardService->getPaginatedLeaderboard(
-            $periodType, $page, $perPage, $search, $month, $year, $isAdmin
+            $periodType,
+            $page,
+            $perPage,
+            $search,
+            $month,
+            $year,
+            $isAdmin,
+            $week
         );
-        
-        $userPosition = $this->leaderboardService->getUserPosition($userId, $periodType, $month, $year, $isAdmin);
-        
+
+        $userPosition = $this->leaderboardService->getUserPosition($userId, $periodType, $month, $year, $isAdmin, $week);
+
         return response()->json([
             ...$paginatedData,
             'user_position' => $userPosition,
@@ -147,7 +168,7 @@ class LeaderboardController extends Controller
         $year = $request->input('year');
 
         $filename = "full_leaderboard_{$period}_" . now()->format('Y-m-d_His') . ".csv";
-        
+
         $headers = [
             'Content-Type' => 'text/csv',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
@@ -157,11 +178,11 @@ class LeaderboardController extends Controller
         if ($period === 'all') {
             $callback = function () {
                 $file = fopen('php://output', 'w');
-                
+
                 // Weekly Leaderboard
                 fputcsv($file, ['=== WEEKLY LEADERBOARD (Full List) ===']);
                 fputcsv($file, ['Rank', 'Matric No', 'Name', 'Phone Number', 'Faculty', 'Year', 'Transaction Count']);
-                
+
                 $weeklyLeaderboard = $this->leaderboardService->getWeeklyLeaderboard();
                 foreach ($weeklyLeaderboard as $entry) {
                     fputcsv($file, [
@@ -174,13 +195,13 @@ class LeaderboardController extends Controller
                         $entry->transaction_count,
                     ]);
                 }
-                
+
                 fputcsv($file, []); // Empty row separator
-                
+
                 // Monthly Leaderboard
                 fputcsv($file, ['=== MONTHLY LEADERBOARD (Full List) ===']);
                 fputcsv($file, ['Rank', 'Matric No', 'Name', 'Phone Number', 'Faculty', 'Year', 'Transaction Count']);
-                
+
                 $monthlyLeaderboard = $this->leaderboardService->getMonthlyLeaderboard();
                 foreach ($monthlyLeaderboard as $entry) {
                     fputcsv($file, [
@@ -193,13 +214,13 @@ class LeaderboardController extends Controller
                         $entry->transaction_count,
                     ]);
                 }
-                
+
                 fputcsv($file, []); // Empty row separator
-                
+
                 // All-Time Leaderboard
                 fputcsv($file, ['=== ALL-TIME LEADERBOARD (Full List) ===']);
                 fputcsv($file, ['Rank', 'Matric No', 'Name', 'Phone Number', 'Faculty', 'Year', 'Transaction Count']);
-                
+
                 $allTimeLeaderboard = $this->leaderboardService->getAllTimeLeaderboard();
                 foreach ($allTimeLeaderboard as $entry) {
                     fputcsv($file, [
@@ -212,7 +233,7 @@ class LeaderboardController extends Controller
                         $entry->transaction_count,
                     ]);
                 }
-                
+
                 fclose($file);
             };
         } else {
@@ -225,10 +246,10 @@ class LeaderboardController extends Controller
 
             $callback = function () use ($leaderboard) {
                 $file = fopen('php://output', 'w');
-                
+
                 // Add CSV headers
                 fputcsv($file, ['Rank', 'Matric No', 'Name', 'Phone Number', 'Faculty', 'Year', 'Transaction Count']);
-                
+
                 // Add data rows (all entries, no limit)
                 foreach ($leaderboard as $entry) {
                     fputcsv($file, [
@@ -241,7 +262,7 @@ class LeaderboardController extends Controller
                         $entry->transaction_count,
                     ]);
                 }
-                
+
                 fclose($file);
             };
         }

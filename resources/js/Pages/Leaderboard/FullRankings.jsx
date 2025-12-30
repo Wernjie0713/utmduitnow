@@ -42,6 +42,8 @@ export default function FullRankings({ auth }) {
     const [search, setSearch] = useState('');
     const [searchValue, setSearchValue] = useState('');
     const [period, setPeriod] = useState('weekly');
+    const [selectedWeek, setSelectedWeek] = useState('8'); // Default to last week
+    const [selectedMonth, setSelectedMonth] = useState('12'); // Default to last month
     const [userPosition, setUserPosition] = useState(null);
     const [totalPages, setTotalPages] = useState(1);
     const [totalRecords, setTotalRecords] = useState(0);
@@ -80,10 +82,10 @@ export default function FullRankings({ auth }) {
     };
     
     
-    // Fetch data when pagination, search, or period changes
+    // Fetch data when pagination, search, period, or selections change
     useEffect(() => {
         fetchData();
-    }, [pagination.pageIndex, pagination.pageSize, search, period]);
+    }, [pagination.pageIndex, pagination.pageSize, search, period, selectedWeek, selectedMonth]);
     
               const fetchData = async () => {
         setIsLoading(true);
@@ -94,6 +96,13 @@ export default function FullRankings({ auth }) {
                 per_page: pagination.pageSize,
                 search: search,
             });
+
+            if (period === 'weekly' && selectedWeek) {
+                params.append('week', selectedWeek);
+            } else if (period === 'monthly' && selectedMonth) {
+                params.append('month', selectedMonth);
+                params.append('year', '2025');
+            }
             
             const response = await fetch(`/api/leaderboard/full?${params}`);
             const result = await response.json();
@@ -148,11 +157,13 @@ export default function FullRankings({ auth }) {
                                 setPeriod(value);
                                 setPagination({ pageIndex: 0, pageSize: 10 });
                             }}>
-                                <TabsList className="grid w-full grid-cols-3 mb-6">
-                                    <TabsTrigger value="weekly">Weekly</TabsTrigger>
-                                    <TabsTrigger value="monthly">Monthly</TabsTrigger>
-                                    <TabsTrigger value="all_time">All-Time</TabsTrigger>
-                                </TabsList>
+                                <div className="mb-6">
+                                    <TabsList className="grid w-full grid-cols-3">
+                                        <TabsTrigger value="weekly">Weekly</TabsTrigger>
+                                        <TabsTrigger value="monthly">Monthly</TabsTrigger>
+                                        <TabsTrigger value="all_time">All-Time</TabsTrigger>
+                                    </TabsList>
+                                </div>
                                 
                                 {/* Date Display Below Tabs */}
                                 <div className="mb-4">
@@ -255,6 +266,37 @@ export default function FullRankings({ auth }) {
                                         </div>
 
                                         <div className="flex items-center gap-2 justify-end sm:justify-start">
+                                            {/* Week/Month Selector */}
+                                            {period === 'weekly' && (
+                                                <Select value={selectedWeek} onValueChange={setSelectedWeek}>
+                                                    <SelectTrigger className="w-[180px]">
+                                                        <SelectValue placeholder="Select Week" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="1">Week 1 (Nov 1-9)</SelectItem>
+                                                        <SelectItem value="2">Week 2 (Nov 10-16)</SelectItem>
+                                                        <SelectItem value="3">Week 3 (Nov 17-23)</SelectItem>
+                                                        <SelectItem value="4">Week 4 (Nov 24-30)</SelectItem>
+                                                        <SelectItem value="5">Week 5 (Dec 1-7)</SelectItem>
+                                                        <SelectItem value="6">Week 6 (Dec 8-14)</SelectItem>
+                                                        <SelectItem value="7">Week 7 (Dec 15-21)</SelectItem>
+                                                        <SelectItem value="8">Week 8 (Dec 22-28)</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+
+                                            {period === 'monthly' && (
+                                                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                                                    <SelectTrigger className="w-[180px]">
+                                                        <SelectValue placeholder="Select Month" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="11">November 2025</SelectItem>
+                                                        <SelectItem value="12">December 2025</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+
                                             {/* Rows per page */}
                                             <Select
                                                 value={String(pagination.pageSize)}

@@ -247,7 +247,7 @@ export default function Dashboard({ auth, stats, leaderboards, isExtendedPeriod 
                 </div>
 
                 {/* Today's Submission Limit */}
-                <Card>
+                {/* <Card>
                     <CardHeader>
                         <CardTitle>Daily Submission Limit</CardTitle>
                         <CardDescription>
@@ -266,12 +266,15 @@ export default function Dashboard({ auth, stats, leaderboards, isExtendedPeriod 
                             </div>
                             <div>
                                 {stats.can_submit_today ? (
-                                    <Link href={route('transactions.submit')}>
-                                        <Button className="gap-2">
-                                            <Upload className="h-4 w-4" />
-                                            Submit Transaction
-                                        </Button>
-                                    </Link>
+                                    // <Link href={route('transactions.submit')}>
+                                    //     <Button className="gap-2">
+                                    //         <Upload className="h-4 w-4" />
+                                    //         Submit Transaction
+                                    //     </Button>
+                                    // </Link>
+                                    <Button disabled>
+                                        Submissions Closed
+                                    </Button>
                                 ) : (
                                     <Button disabled>
                                         Daily Limit Reached
@@ -285,6 +288,20 @@ export default function Dashboard({ auth, stats, leaderboards, isExtendedPeriod 
                                 style={{ width: `${(stats.today_submissions / stats.max_submissions_per_day) * 100}%` }}
                             ></div>
                         </div>
+                    </CardContent>
+                </Card> */}
+
+                <Card className="border-blue-200 bg-blue-50/50">
+                    <CardHeader>
+                        <div className="flex items-center gap-2">
+                            <Trophy className="h-5 w-5 text-blue-600" />
+                            <CardTitle className="text-blue-900">Event Ended</CardTitle>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-blue-800">
+                            The event has ended. Thank you for your participation! You can still view your rankings and transaction history. Stay tuned for future events!
+                        </p>
                     </CardContent>
                 </Card>
 

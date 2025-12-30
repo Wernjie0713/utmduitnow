@@ -35,7 +35,7 @@ Route::middleware(['auth', 'account.not.frozen'])->group(function () {
 
 // Student Routes (Authenticated)
 Route::middleware(['auth', 'verified', 'profile.completed', 'account.not.frozen'])->group(function () {
-    Route::get('/transactions/submit', [TransactionController::class, 'index'])->name('transactions.submit');
+    // Route::get('/transactions/submit', [TransactionController::class, 'index'])->name('transactions.submit');
     Route::post('/transactions/preview', [TransactionController::class, 'preview'])->name('transactions.preview');
     Route::post('/transactions', [TransactionController::class, 'store'])->name('transactions.store');
     Route::get('/transactions/my', [TransactionController::class, 'myTransactions'])->name('transactions.my');

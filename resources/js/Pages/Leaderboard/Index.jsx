@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link } from '@inertiajs/react';
@@ -6,8 +7,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/animate-u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
 import { Button } from '@/Components/ui/button';
 import UserAvatar from '@/Components/UserAvatar';
-import { Trophy, Medal, Award, ArrowLeft, AlertCircle } from 'lucide-react';
+import { Trophy, Medal, Award, ArrowLeft, AlertCircle, ListOrdered } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/Components/ui/alert';
+import { router } from '@inertiajs/react';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/Components/ui/select';
 
 export default function Index({ 
     auth,
@@ -17,8 +26,25 @@ export default function Index({
     week4Data,
     monthlyData,
     allTimeData,
-    extendedSubmissionEnd,
+    hasEnded = false,
+    selectedWeek = null,
+    selectedMonth = null,
+    activeTab = 'weekly',
 }) {
+    const [currentTab, setCurrentTab] = useState(activeTab);
+
+    // Update currentTab when activeTab prop changes (e.g. after router.get)
+    useEffect(() => {
+        setCurrentTab(activeTab);
+    }, [activeTab]);
+
+    const handleWeekChange = (week) => {
+        router.get(route('leaderboard.index'), { week }, { preserveState: true });
+    };
+
+    const handleMonthChange = (month) => {
+        router.get(route('leaderboard.index'), { month, year: '2025' }, { preserveState: true });
+    };
     // Check if user is admin
     const isAdmin = auth?.user?.roles?.some(role => role.name === 'admin') || false;
 
@@ -186,13 +212,27 @@ export default function Index({
                             )}
 
                             {isExtendedPeriod ? (
-                                <Tabs defaultValue="week3" className="w-full">
-                                    <TabsList className="grid w-full grid-cols-4">
+                                <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
+                                    <TabsList className="grid w-full grid-cols-4 mb-6">
                                         <TabsTrigger value="week3">Week 3</TabsTrigger>
                                         <TabsTrigger value="week4">Week 4</TabsTrigger>
                                         <TabsTrigger value="monthly">Monthly</TabsTrigger>
                                         <TabsTrigger value="all-time">All-Time</TabsTrigger>
                                     </TabsList>
+
+                                    <div className="flex justify-end mb-4">
+                                        {currentTab === 'monthly' && (
+                                            <Select value={selectedMonth} onValueChange={handleMonthChange}>
+                                                <SelectTrigger className="w-[180px]">
+                                                    <SelectValue placeholder="Select Month" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="11">November 2025</SelectItem>
+                                                    <SelectItem value="12">December 2025</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                    </div>
 
                                     <TabsContent value="week3" className="mt-6">
                                         <div className="mb-4">
@@ -241,12 +281,44 @@ export default function Index({
                                     </TabsContent>
                                 </Tabs>
                             ) : (
-                                <Tabs defaultValue="weekly" className="w-full">
-                                    <TabsList className="grid w-full grid-cols-3">
+                                <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
+                                    <TabsList className="grid w-full grid-cols-3 mb-6">
                                         <TabsTrigger value="weekly">Weekly</TabsTrigger>
                                         <TabsTrigger value="monthly">Monthly</TabsTrigger>
                                         <TabsTrigger value="all-time">All-Time</TabsTrigger>
                                     </TabsList>
+
+                                    <div className="flex justify-end mb-4">
+                                        {currentTab === 'weekly' && (
+                                            <Select value={selectedWeek} onValueChange={handleWeekChange}>
+                                                <SelectTrigger className="w-[180px]">
+                                                    <SelectValue placeholder="Select Week" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="1">Week 1 (Nov 1-9)</SelectItem>
+                                                    <SelectItem value="2">Week 2 (Nov 10-16)</SelectItem>
+                                                    <SelectItem value="3">Week 3 (Nov 17-23)</SelectItem>
+                                                    <SelectItem value="4">Week 4 (Nov 24-30)</SelectItem>
+                                                    <SelectItem value="5">Week 5 (Dec 1-7)</SelectItem>
+                                                    <SelectItem value="6">Week 6 (Dec 8-14)</SelectItem>
+                                                    <SelectItem value="7">Week 7 (Dec 15-21)</SelectItem>
+                                                    <SelectItem value="8">Week 8 (Dec 22-28)</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+
+                                        {currentTab === 'monthly' && (
+                                            <Select value={selectedMonth} onValueChange={handleMonthChange}>
+                                                <SelectTrigger className="w-[180px]">
+                                                    <SelectValue placeholder="Select Month" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="11">November 2025</SelectItem>
+                                                    <SelectItem value="12">December 2025</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                    </div>
 
                                     <TabsContent value="weekly" className="mt-6">
                                         <div className="mb-4">
