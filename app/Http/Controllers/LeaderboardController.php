@@ -138,6 +138,8 @@ class LeaderboardController extends Controller
         $month = $request->input('month', now()->month);
         $year = $request->input('year', now()->year);
         $week = $request->input('week');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
 
         $paginatedData = $this->leaderboardService->getPaginatedLeaderboard(
             $periodType,
@@ -147,7 +149,9 @@ class LeaderboardController extends Controller
             $month,
             $year,
             $isAdmin,
-            $week
+            $week,
+            $startDate,
+            $endDate
         );
 
         $userPosition = $this->leaderboardService->getUserPosition($userId, $periodType, $month, $year, $isAdmin, $week);
@@ -166,6 +170,8 @@ class LeaderboardController extends Controller
         $period = $request->input('period', 'all_time');
         $month = $request->input('month');
         $year = $request->input('year');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
 
         $filename = "full_leaderboard_{$period}_" . now()->format('Y-m-d_His') . ".csv";
 
@@ -237,18 +243,28 @@ class LeaderboardController extends Controller
                 fclose($file);
             };
         } else {
-            // Single period export (no limit, full data)
-            $leaderboard = match ($period) {
-                'weekly' => $this->leaderboardService->getWeeklyLeaderboard(),
-                'monthly' => $this->leaderboardService->getMonthlyLeaderboard($month, $year),
-                default => $this->leaderboardService->getAllTimeLeaderboard(),
-            };
-
-            $callback = function () use ($leaderboard) {
+            // Handle specific period
+            $callback = function () use ($period, $month, $year, $startDate, $endDate) {
                 $file = fopen('php://output', 'w');
 
-                // Add CSV headers
+                // Add title based on period
+                $title = match ($period) {
+                    'weekly' => '=== WEEKLY LEADERBOARD (Full List) ===',
+                    'monthly' => "=== MONTHLY LEADERBOARD ({$month}/{$year}) ===",
+                    'all_time' => '=== ALL-TIME LEADERBOARD ===',
+                    'custom' => "=== CUSTOM LEADERBOARD ({$startDate} to {$endDate}) ===",
+                    default => '=== LEADERBOARD ===',
+                };
+                fputcsv($file, [$title]);
                 fputcsv($file, ['Rank', 'Matric No', 'Name', 'Phone Number', 'Faculty', 'Year', 'Transaction Count']);
+
+                $leaderboard = match ($period) {
+                    'weekly' => $this->leaderboardService->getWeeklyLeaderboard(),
+                    'monthly' => $this->leaderboardService->getMonthlyLeaderboard($month, $year),
+                    'all_time' => $this->leaderboardService->getAllTimeLeaderboard(true),
+                    'custom' => $startDate && $endDate ? $this->leaderboardService->getCustomRangeLeaderboard($startDate, $endDate) : collect([]),
+                    default => collect([]),
+                };
 
                 // Add data rows (all entries, no limit)
                 foreach ($leaderboard as $entry) {

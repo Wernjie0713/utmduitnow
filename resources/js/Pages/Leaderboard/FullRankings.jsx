@@ -32,6 +32,8 @@ import {
 import UserAvatar from '@/Components/UserAvatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
 import { Trophy, Medal, Award, Search, Download, ChevronDown } from 'lucide-react';
+import { DateRangePicker } from '@/Components/ui/date-range-picker';
+import { format } from 'date-fns';
 
 export default function FullRankings({ auth }) {
     // Detect if user is admin
@@ -44,6 +46,7 @@ export default function FullRankings({ auth }) {
     const [period, setPeriod] = useState('weekly');
     const [selectedWeek, setSelectedWeek] = useState('8'); // Default to last week
     const [selectedMonth, setSelectedMonth] = useState('12'); // Default to last month
+    const [leaderboardDateRange, setLeaderboardDateRange] = useState({ from: undefined, to: undefined });
     const [userPosition, setUserPosition] = useState(null);
     const [totalPages, setTotalPages] = useState(1);
     const [totalRecords, setTotalRecords] = useState(0);
@@ -51,8 +54,31 @@ export default function FullRankings({ auth }) {
     const [isLoading, setIsLoading] = useState(false);
     
     // Export function for full rankings (not limited to Top 20)
-    const exportLeaderboard = (period) => {
-        window.location.href = route('leaderboard.export', { period });
+    // Export function for full rankings (not limited to Top 20)
+    const exportLeaderboard = (targetPeriod) => {
+        const params = { period: targetPeriod };
+        
+        if (targetPeriod === 'custom') {
+            if (leaderboardDateRange?.from && leaderboardDateRange?.to) {
+                params.start_date = format(leaderboardDateRange.from, 'yyyy-MM-dd');
+                params.end_date = format(leaderboardDateRange.to, 'yyyy-MM-dd');
+            } else {
+                alert('Please select a date range first.');
+                return;
+            }
+        } else if (targetPeriod === 'monthly') {
+             // If we want to export specific month, we might need to add month/year params here if backend supports it.
+             // Currently backend exportFullRankings takes month/year inputs. 
+             // Let's assume we want to export the *currently selected* month if viewing monthly, or just default.
+             // But the dropdown has specific "Monthly (Full List)" which implies current context or generic?
+             // The user didn't ask to change monthly export, so I'll leave it simple or just pass current selection if active.
+             if (period === 'monthly' && selectedMonth) {
+                 params.month = selectedMonth;
+                 params.year = '2025';
+             }
+        }
+        
+        window.location.href = route('leaderboard.export', params);
     };
     
     const getRankIcon = (rank) => {
@@ -84,8 +110,11 @@ export default function FullRankings({ auth }) {
     
     // Fetch data when pagination, search, period, or selections change
     useEffect(() => {
-        fetchData();
-    }, [pagination.pageIndex, pagination.pageSize, search, period, selectedWeek, selectedMonth]);
+        // Only fetch if not custom, or if custom and dates are selected
+        if (period !== 'custom' || (leaderboardDateRange?.from && leaderboardDateRange?.to)) {
+            fetchData();
+        }
+    }, [pagination.pageIndex, pagination.pageSize, search, period, selectedWeek, selectedMonth, leaderboardDateRange]); // Added leaderboardDateRange to dependency
     
               const fetchData = async () => {
         setIsLoading(true);
@@ -102,6 +131,9 @@ export default function FullRankings({ auth }) {
             } else if (period === 'monthly' && selectedMonth) {
                 params.append('month', selectedMonth);
                 params.append('year', '2025');
+            } else if (period === 'custom' && leaderboardDateRange?.from && leaderboardDateRange?.to) {
+                params.append('start_date', format(leaderboardDateRange.from, 'yyyy-MM-dd'));
+                params.append('end_date', format(leaderboardDateRange.to, 'yyyy-MM-dd'));
             }
             
             const response = await fetch(`/api/leaderboard/full?${params}`);
@@ -158,10 +190,11 @@ export default function FullRankings({ auth }) {
                                 setPagination({ pageIndex: 0, pageSize: 10 });
                             }}>
                                 <div className="mb-6">
-                                    <TabsList className="grid w-full grid-cols-3">
+                                    <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-4' : 'grid-cols-3'}`}>
                                         <TabsTrigger value="weekly">Weekly</TabsTrigger>
                                         <TabsTrigger value="monthly">Monthly</TabsTrigger>
                                         <TabsTrigger value="all_time">All-Time</TabsTrigger>
+                                        {isAdmin && <TabsTrigger value="custom">Custom</TabsTrigger>}
                                     </TabsList>
                                 </div>
                                 
@@ -202,6 +235,18 @@ export default function FullRankings({ auth }) {
                                             </p>
                                         </>
                                     )}
+                                    {period === 'custom' && (
+                                        <>
+                                            <h3 className="text-lg font-semibold">Custom Range</h3>
+                                            <p className="text-sm text-gray-600">
+                                                {leaderboardDateRange?.from && leaderboardDateRange?.to ? (
+                                                    `${format(leaderboardDateRange.from, 'PPP')} - ${format(leaderboardDateRange.to, 'PPP')}`
+                                                ) : (
+                                                    'Select a date range'
+                                                )}
+                                            </p>
+                                        </>
+                                    )}
                                 </div>
                                 
                                 <div className="space-y-4">
@@ -236,6 +281,12 @@ export default function FullRankings({ auth }) {
                                                             <Download className="mr-2 h-4 w-4" />
                                                             All Periods (Full List)
                                                         </DropdownMenuItem>
+                                                        {period === 'custom' && (
+                                                            <DropdownMenuItem onClick={() => exportLeaderboard('custom')}>
+                                                                <Download className="mr-2 h-4 w-4" />
+                                                                Custom Range (Full List)
+                                                            </DropdownMenuItem>
+                                                        )}
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
                                             )}
@@ -295,6 +346,21 @@ export default function FullRankings({ auth }) {
                                                         <SelectItem value="12">December 2025</SelectItem>
                                                     </SelectContent>
                                                 </Select>
+                                            )}
+
+                                            {period === 'custom' && (
+                                                <div className="flex items-center gap-2">
+                                                    <DateRangePicker 
+                                                        value={leaderboardDateRange}
+                                                        onChange={setLeaderboardDateRange}
+                                                    />
+                                                    <Button 
+                                                        onClick={() => setPagination({ pageIndex: 0, pageSize: 10 })} // Trigger fetch via useEffect dependency
+                                                        disabled={!leaderboardDateRange?.from || !leaderboardDateRange?.to}
+                                                    >
+                                                        Apply
+                                                    </Button>
+                                                </div>
                                             )}
 
                                             {/* Rows per page */}

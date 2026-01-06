@@ -278,12 +278,13 @@ class LeaderboardService
      * @param bool $adminView
      * @return array
      */
-    public function getPaginatedLeaderboard($periodType, $page = 1, $perPage = 50, $search = null, $month = null, $year = null, $adminView = true, $week = null)
+    public function getPaginatedLeaderboard($periodType, $page = 1, $perPage = 50, $search = null, $month = null, $year = null, $adminView = true, $week = null, $startDate = null, $endDate = null)
     {
         $leaderboard = match ($periodType) {
             'weekly' => $week ? $this->getWeekLeaderboard($week) : $this->getWeeklyLeaderboard(),
             'monthly' => $this->getMonthlyLeaderboard($month, $year),
             'all_time' => $this->getAllTimeLeaderboard($adminView),
+            'custom' => $startDate && $endDate ? $this->getCustomRangeLeaderboard($startDate, $endDate) : collect([]),
             default => collect([]),
         };
 
