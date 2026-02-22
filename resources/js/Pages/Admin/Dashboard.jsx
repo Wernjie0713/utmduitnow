@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/Components/ui/card';
@@ -23,11 +23,61 @@ import YearParticipationChart from '@/Components/Admin/Charts/YearParticipationC
 export default function Dashboard({ 
     stats, 
     leaderboards,
-    analyticsData
+    analyticsData,
+    entrepreneurStats,
+    entrepreneurLeaderboards,
+    currentWeek,
+    currentMonth
 }) {
+    const [viewMode, setViewMode] = useState('personal'); // 'personal' or 'entrepreneur'
     const [selectedChart, setSelectedChart] = useState('trends');
     const [selectedChartPeriod, setSelectedChartPeriod] = useState('weekly');
     const [selectedLeaderboardTab, setSelectedLeaderboardTab] = useState('weekly');
+    
+    // Period selectors for the leaderboard
+    const [selectedWeek, setSelectedWeek] = useState('8');
+    const [selectedMonth, setSelectedMonth] = useState('12');
+    const [periodLeaderboard, setPeriodLeaderboard] = useState(null);
+    const [isLoadingPeriod, setIsLoadingPeriod] = useState(false);
+
+    useEffect(() => {
+        if (selectedLeaderboardTab !== 'weekly' && selectedLeaderboardTab !== 'monthly') {
+             setPeriodLeaderboard(null);
+             return;
+        }
+        
+        // Don't fetch if it's the current week/month, we can use the default props
+        if (selectedLeaderboardTab === 'weekly' && selectedWeek === currentWeek?.toString() && viewMode === 'personal') {
+             setPeriodLeaderboard(null);
+             return;
+        }
+
+        if (selectedLeaderboardTab === 'monthly' && selectedMonth === currentMonth?.toString() && viewMode === 'personal') {
+             setPeriodLeaderboard(null);
+             return;
+        }
+
+        const fetchPeriodData = async () => {
+            setIsLoadingPeriod(true);
+            try {
+                const response = await axios.get(route('admin.dashboard.period'), {
+                    params: {
+                        period: selectedLeaderboardTab,
+                        value: selectedLeaderboardTab === 'weekly' ? selectedWeek : selectedMonth,
+                        mode: viewMode
+                    }
+                });
+                setPeriodLeaderboard(response.data.leaderboard);
+            } catch (error) {
+                console.error("Error fetching period data:", error);
+                toast.error("Failed to fetch leaderboard data");
+            } finally {
+                setIsLoadingPeriod(false);
+            }
+        };
+
+        fetchPeriodData();
+    }, [selectedLeaderboardTab, selectedWeek, selectedMonth, viewMode, currentWeek, currentMonth]);
     
     // Separate date range states for Leaderboard and Analytics
     const [leaderboardDateRange, setLeaderboardDateRange] = useState({ from: undefined, to: undefined });
@@ -155,8 +205,87 @@ export default function Dashboard({
         );
     };
 
+    const renderEntrepreneurLeaderboard = (leaderboard) => {
+        if (!leaderboard || leaderboard.length === 0) {
+            return (
+                <div className="text-center py-16 text-gray-500">
+                    <div className="flex flex-col items-center gap-4">
+                        <Trophy className="h-16 w-16 text-gray-300" />
+                        <div>
+                            <p className="text-lg font-medium text-gray-700">No rankings yet</p>
+                            <p className="text-sm">No entrepreneur transactions for this period yet.</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Show top 20 entries
+        const top20 = leaderboard.slice(0, 20);
+
+        return (
+            <div className="border rounded-lg overflow-hidden">
+                {/* Fixed Header */}
+                <Table className="table-fixed w-full">
+                    <TableHeader className="bg-gray-50">
+                        <TableRow>
+                            <TableHead className="w-24 px-6">Rank</TableHead>
+                            <TableHead className="px-4">Business Unit</TableHead>
+                            <TableHead className="w-40 px-4 text-center">Type</TableHead>
+                            <TableHead className="w-36 text-right px-4">Transactions</TableHead>
+                            <TableHead className="w-36 text-right px-6">Total Amount</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                </Table>
+                
+                {/* Scrollable Body - Fixed height for ~10 rows (520px) */}
+                <div className="overflow-y-auto pb-6" style={{ maxHeight: '520px' }}>
+                    <Table className="table-fixed w-full">
+                        <TableBody>
+                            {top20.map((entry, index) => (
+                                <TableRow 
+                                    key={entry.unit_id} 
+                                    className={`${getRankClass(entry.rank)} ${index % 2 === 0 ? '' : 'bg-gray-50/50'} hover:bg-gray-100/50 transition-colors`}
+                                >
+                                    <TableCell className="w-24 font-bold px-6">
+                                        <div className="flex items-center gap-2">
+                                            {getRankIcon(entry.rank)}
+                                            <span className={entry.rank <= 3 ? 'text-lg' : ''}>#{entry.rank}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="font-medium px-4">
+                                        {entry.entrepreneur_unit?.business_name}
+                                    </TableCell>
+                                    <TableCell className="w-40 text-center px-4">
+                                        {entry.entrepreneur_unit?.business_location === 'physical' ? (
+                                            <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">Physical</Badge>
+                                        ) : (
+                                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Online</Badge>
+                                        )}
+                                    </TableCell>
+                                    <TableCell className={`w-36 text-right font-bold px-4 ${entry.rank <= 3 ? 'text-xl' : 'text-lg'}`}>
+                                        <span className={
+                                            entry.rank === 1 ? 'text-yellow-600' :
+                                            entry.rank === 2 ? 'text-gray-600' :
+                                            entry.rank === 3 ? 'text-amber-600' : ''
+                                        }>
+                                            {entry.transaction_count}
+                                        </span>
+                                    </TableCell>
+                                    <TableCell className="w-36 text-right px-6 font-medium text-gray-600">
+                                        RM {entry.total_amount ? parseFloat(entry.total_amount).toFixed(2) : '0.00'}
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            </div>
+        );
+    };
+
     const exportLeaderboard = (period, limit = 20, startDate = null, endDate = null) => {
-        const params = new URLSearchParams({ period, limit });
+        const params = new URLSearchParams({ period, limit, mode: viewMode });
         if (startDate && endDate) {
             params.append('start_date', startDate);
             params.append('end_date', endDate);
@@ -181,6 +310,7 @@ export default function Dashboard({
                 params: {
                     start_date: format(leaderboardDateRange.from, 'yyyy-MM-dd'),
                     end_date: format(leaderboardDateRange.to, 'yyyy-MM-dd'),
+                    mode: viewMode,
                 }
             });
 
@@ -237,16 +367,29 @@ export default function Dashboard({
             <Head title="Admin Dashboard" />
 
             <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-lg font-medium">Dashboard Overview</h3>
+                    <Tabs value={viewMode} onValueChange={setViewMode} className="w-[400px]">
+                        <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="personal">Personal</TabsTrigger>
+                            <TabsTrigger value="entrepreneur">Entrepreneur</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                </div>
                 <div className="space-y-6">
                     {/* Statistics Cards */}
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Total Students</CardTitle>
+                                <CardTitle className="text-sm font-medium">
+                                    {viewMode === 'personal' ? 'Total Students' : 'Total Units'}
+                                </CardTitle>
                                 <Users className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">{stats.total_users}</div>
+                                <div className="text-2xl font-bold">
+                                    {viewMode === 'personal' ? stats.total_users : (entrepreneurStats?.total_units || 0)}
+                                </div>
                             </CardContent>
                         </Card>
 
@@ -256,7 +399,11 @@ export default function Dashboard({
                                 <FileCheck className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">{stats.total_transactions + stats.rejected_transactions}</div>
+                                <div className="text-2xl font-bold">
+                                    {viewMode === 'personal' 
+                                        ? (stats.total_transactions + stats.rejected_transactions) 
+                                        : (entrepreneurStats?.total_transactions || 0)}
+                                </div>
                             </CardContent>
                         </Card>
 
@@ -266,7 +413,9 @@ export default function Dashboard({
                                 <DollarSign className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">RM {parseFloat(stats.total_amount).toFixed(2)}</div>
+                                <div className="text-2xl font-bold">
+                                    RM {parseFloat(viewMode === 'personal' ? stats.total_amount : (entrepreneurStats?.total_amount || 0)).toFixed(2)}
+                                </div>
                             </CardContent>
                         </Card>
                     </div>
@@ -335,31 +484,63 @@ export default function Dashboard({
 
                                 <TabsContents>
                                     <TabsContent value="weekly" className="mt-6">
-                                        <div className="mb-4">
-                                            <h3 className="text-lg font-semibold">This Week</h3>
-                                            <p className="text-sm text-gray-600">
-                                                {new Date().toLocaleDateString('en-MY', { 
-                                                    weekday: 'long',
-                                                    year: 'numeric',
-                                                    month: 'long',
-                                                    day: 'numeric'
-                                                })}
-                                            </p>
+                                        <div className="flex justify-between items-center mb-4">
+                                            <div>
+                                                <h3 className="text-lg font-semibold">Weekly Rankings</h3>
+                                                <p className="text-sm text-gray-600">
+                                                    Showing data for Week {selectedWeek}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Select value={selectedWeek} onValueChange={setSelectedWeek}>
+                                                    <SelectTrigger className="w-[180px]">
+                                                        <SelectValue placeholder="Select Week" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="1">Week 1 (Nov 1-9)</SelectItem>
+                                                        <SelectItem value="2">Week 2 (Nov 10-16)</SelectItem>
+                                                        <SelectItem value="3">Week 3 (Nov 17-23)</SelectItem>
+                                                        <SelectItem value="4">Week 4 (Nov 24-30)</SelectItem>
+                                                        <SelectItem value="5">Week 5 (Dec 1-7)</SelectItem>
+                                                        <SelectItem value="6">Week 6 (Dec 8-14)</SelectItem>
+                                                        <SelectItem value="7">Week 7 (Dec 15-21)</SelectItem>
+                                                        <SelectItem value="8">Week 8 (Dec 22-28)</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
                                         </div>
-                                        {renderLeaderboard(leaderboards?.weekly)}
+                                        {isLoadingPeriod ? (
+                                            <div className="text-center py-16 text-gray-500">Loading period data...</div>
+                                        ) : viewMode === 'personal' 
+                                            ? renderLeaderboard(periodLeaderboard || leaderboards?.weekly) 
+                                            : renderEntrepreneurLeaderboard(periodLeaderboard || entrepreneurLeaderboards?.weekly)}
                                     </TabsContent>
 
                                     <TabsContent value="monthly" className="mt-6">
-                                        <div className="mb-4">
-                                            <h3 className="text-lg font-semibold">This Month</h3>
-                                            <p className="text-sm text-gray-600">
-                                                {new Date().toLocaleDateString('en-MY', {
-                                                    month: 'long',
-                                                    year: 'numeric'
-                                                })}
-                                            </p>
+                                        <div className="flex justify-between items-center mb-4">
+                                            <div>
+                                                <h3 className="text-lg font-semibold">Monthly Rankings</h3>
+                                                <p className="text-sm text-gray-600">
+                                                    {selectedMonth === '11' ? 'November 2025' : 'December 2025'}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                                                    <SelectTrigger className="w-[180px]">
+                                                        <SelectValue placeholder="Select Month" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="11">November 2025</SelectItem>
+                                                        <SelectItem value="12">December 2025</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
                                         </div>
-                                        {renderLeaderboard(leaderboards?.monthly)}
+                                        {isLoadingPeriod ? (
+                                            <div className="text-center py-16 text-gray-500">Loading period data...</div>
+                                        ) : viewMode === 'personal' 
+                                            ? renderLeaderboard(periodLeaderboard || leaderboards?.monthly) 
+                                            : renderEntrepreneurLeaderboard(periodLeaderboard || entrepreneurLeaderboards?.monthly)}
                                     </TabsContent>
 
                                     <TabsContent value="all-time" className="mt-6">
@@ -369,7 +550,9 @@ export default function Dashboard({
                                                 Since the beginning of the competition
                                             </p>
                                         </div>
-                                        {renderLeaderboard(leaderboards?.allTime)}
+                                        {viewMode === 'personal' 
+                                            ? renderLeaderboard(leaderboards?.allTime) 
+                                            : renderEntrepreneurLeaderboard(entrepreneurLeaderboards?.allTime)}
                                     </TabsContent>
 
                                     <TabsContent value="custom" className="mt-6">
@@ -402,7 +585,9 @@ export default function Dashboard({
                                                             )}
                                                         </p>
                                                     </div>
-                                                    {renderLeaderboard(customData.leaderboard)}
+                                                    {viewMode === 'personal' 
+                                                        ? renderLeaderboard(customData.leaderboard) 
+                                                        : renderEntrepreneurLeaderboard(customData.leaderboard)}
                                                 </>
                                             )}
                                             
@@ -424,9 +609,10 @@ export default function Dashboard({
                         </CardContent>
                     </Card>
 
-                    {/* Analytics Section */}
-                    <Card className="mt-6">
-                        <CardHeader>
+                    {/* Analytics Section - Only show for personal view mode */}
+                    {viewMode === 'personal' && (
+                        <Card className="mt-6">
+                            <CardHeader>
                             <div className="flex items-start justify-between">
                                 <div className="flex-1">
                                     <CardTitle className="flex items-center gap-2">
@@ -536,6 +722,7 @@ export default function Dashboard({
                             </Tabs>
                         </CardContent>
                     </Card>
+                    )}
                 </div>
             </div>
         </AuthenticatedLayout>

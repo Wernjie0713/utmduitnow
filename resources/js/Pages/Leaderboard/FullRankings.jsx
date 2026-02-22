@@ -202,25 +202,31 @@ export default function FullRankings({ auth }) {
                                 <div className="mb-4">
                                     {period === 'weekly' && (
                                         <>
-                                            <h3 className="text-lg font-semibold">This Week</h3>
+                                            <h3 className="text-lg font-semibold">Week {selectedWeek}</h3>
                                             <p className="text-sm text-gray-600">
-                                                {new Date().toLocaleDateString('en-MY', { 
-                                                    weekday: 'long',
-                                                    year: 'numeric',
-                                                    month: 'long',
-                                                    day: 'numeric'
-                                                })}
+                                                {{
+                                                    '1': 'Nov 1 - 9, 2025',
+                                                    '2': 'Nov 10 - 16, 2025',
+                                                    '3': 'Nov 17 - 23, 2025',
+                                                    '4': 'Nov 24 - 30, 2025',
+                                                    '5': 'Dec 1 - 7, 2025',
+                                                    '6': 'Dec 8 - 14, 2025',
+                                                    '7': 'Dec 15 - 21, 2025',
+                                                    '8': 'Dec 22 - 28, 2025',
+                                                }[selectedWeek] || 'Select a week'}
                                             </p>
                                         </>
                                     )}
                                     {period === 'monthly' && (
                                         <>
-                                            <h3 className="text-lg font-semibold">This Month</h3>
+                                            <h3 className="text-lg font-semibold">
+                                                {{
+                                                    '11': 'November 2025',
+                                                    '12': 'December 2025',
+                                                }[selectedMonth] || 'Select a month'}
+                                            </h3>
                                             <p className="text-sm text-gray-600">
-                                                {new Date().toLocaleDateString('en-MY', {
-                                                    month: 'long',
-                                                    year: 'numeric'
-                                                })}
+                                                Monthly Leaderboard
                                             </p>
                                         </>
                                     )}

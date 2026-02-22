@@ -30,12 +30,13 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $user = $request->user();
-        
-        // Load roles relationship if user exists
+
+        // Load roles and entrepreneur unit relationships if user exists
         if ($user) {
             $user->load('roles');
+            $user->loadMissing('entrepreneurUnit');
         }
-        
+
         return [
             ...parent::share($request),
             'auth' => [
@@ -43,8 +44,10 @@ class HandleInertiaRequests extends Middleware
                     ...$user->toArray(),
                     'needsProfileCompletion' => $user->needsProfileCompletion(),
                     'password' => $user->password ? true : false, // Only send boolean
+                    'entrepreneurUnit' => $user->isA('shop') ? $user->entrepreneurUnit?->load('teamMembers', 'duitnowIds') : null,
                 ] : null,
             ],
+            'isShop' => $user ? $user->isA('shop') : false,
         ];
     }
 }

@@ -74,23 +74,30 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Transaction::class);
     }
 
+    public function entrepreneurUnit()
+    {
+        return $this->hasOne(EntrepreneurUnit::class, 'manager_id');
+    }
+
+
+
     public function canSubmitToday()
     {
         $today = DateHelper::today();
         $maxSubmissions = config('app.max_submissions_per_day', 100);
-        
+
         $todaySubmissions = DB::table('daily_submission_limits')
             ->where('user_id', $this->id)
             ->where('date', $today)
             ->value('submission_count') ?? 0;
-        
+
         return $todaySubmissions < $maxSubmissions;
     }
 
     public function getTodaySubmissionCount()
     {
         $today = DateHelper::today();
-        
+
         return DB::table('daily_submission_limits')
             ->where('user_id', $this->id)
             ->where('date', $today)
@@ -104,7 +111,7 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->avatar_url ? Storage::url($this->avatar_url) : null;
     }
-    
+
     /**
      * Get avatar with fallback
      */
@@ -135,11 +142,11 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function needsProfileCompletion(): bool
     {
-        return !$this->phone_number || 
-               !$this->password || 
-               !$this->matric_no || 
-               !$this->faculty_id || 
-               !$this->year_of_study || 
-               !$this->duitnow_id;
+        return !$this->phone_number ||
+            !$this->password ||
+            !$this->matric_no ||
+            !$this->faculty_id ||
+            !$this->year_of_study ||
+            !$this->duitnow_id;
     }
 }

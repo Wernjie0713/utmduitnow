@@ -6,8 +6,8 @@ use Illuminate\Foundation\Configuration\Middleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: __DIR__.'/../routes/web.php',
-        commands: __DIR__.'/../routes/console.php',
+        web: __DIR__ . '/../routes/web.php',
+        commands: __DIR__ . '/../routes/console.php',
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
@@ -20,6 +20,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'profile.completed' => \App\Http\Middleware\EnsureProfileCompleted::class,
             'account.not.frozen' => \App\Http\Middleware\EnsureAccountNotFrozen::class,
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            'entrepreneur.manager' => \App\Http\Middleware\EnsureEntrepreneurManager::class,
+            'shop' => \App\Http\Middleware\EnsureUserIsShop::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

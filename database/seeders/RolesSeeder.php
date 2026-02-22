@@ -14,11 +14,13 @@ class RolesSeeder extends Seeder
     {
         // Create roles using Bouncer
         \Bouncer::allow('admin')->everything();
-        
+
         \Bouncer::allow('student')->to('submit-transaction');
         \Bouncer::allow('student')->to('view-own-transactions');
         \Bouncer::allow('student')->to('view-leaderboard');
-        
+
+        \Bouncer::allow('shop')->to('view-leaderboard');
+
         $this->command->info('Roles and abilities created successfully!');
     }
 }

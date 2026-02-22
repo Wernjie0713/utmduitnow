@@ -30,15 +30,20 @@ import {
     ListOrdered,
     Menu,
     X,
+    Building2,
+    Store,
 } from "lucide-react";
 import NotificationBell from "@/Components/NotificationBell";
 
 // Inner component that uses useSidebar hook
-function AuthenticatedLayoutInner({ user, isAdmin, header, children }) {
+function AuthenticatedLayoutInner({ user, isAdmin, isShop, header, children }) {
     const { toggleSidebar, isMobile } = useSidebar();
 
     const studentNavItems = [
         { name: "Dashboard", href: "dashboard", icon: Home },
+    ];
+
+    const studentPersonalNavItems = [
         // { name: 'Submit Transaction', href: 'transactions.submit', icon: Upload },
         { name: "My Transactions", href: "transactions.my", icon: List },
         { name: "Full Rankings", href: "leaderboard.full", icon: Trophy },
@@ -46,11 +51,26 @@ function AuthenticatedLayoutInner({ user, isAdmin, header, children }) {
 
     const adminNavItems = [
         { name: "Dashboard", href: "admin.dashboard", icon: Home },
+    ];
+
+    const adminPersonalNavItems = [
         { name: "User Management", href: "admin.users", icon: User },
         { name: "Full Rankings", href: "leaderboard.full", icon: Trophy },
     ];
 
-    const navItems = isAdmin ? adminNavItems : studentNavItems;
+    const adminEntrepreneurNavItems = [
+        { name: "Entrepreneur Units", href: "admin.entrepreneur.units", icon: Store },
+        { name: "Business Rankings", href: "shop.leaderboard.full", icon: Trophy },
+    ];
+
+    const shopNavItems = [
+        { name: "My Business", href: "shop.profile", icon: Store },
+        { name: "Business Rankings", href: "shop.leaderboard.full", icon: Trophy },
+    ];
+
+    const navItems = isAdmin ? adminNavItems : isShop ? shopNavItems : studentNavItems;
+    const personalNavItems = isAdmin ? adminPersonalNavItems : isShop ? null : studentPersonalNavItems;
+
 
     return (
         <>
@@ -63,7 +83,7 @@ function AuthenticatedLayoutInner({ user, isAdmin, header, children }) {
                     <div className="flex h-14 items-center justify-center px-4 border-b group-data-[collapsible=icon]:justify-center">
                         <Link
                             href={route(
-                                isAdmin ? "admin.dashboard" : "dashboard"
+                                isAdmin ? "admin.dashboard" : isShop ? "shop.profile" : "dashboard"
                             )}
                             className="flex items-center gap-2"
                         >
@@ -118,12 +138,70 @@ function AuthenticatedLayoutInner({ user, isAdmin, header, children }) {
                             </SidebarMenu>
                         </SidebarGroupContent>
                     </SidebarGroup>
+
+                    {personalNavItems && (
+                        <>
+                            <SidebarSeparator />
+                            <SidebarGroup>
+                                <SidebarGroupContent>
+                                    <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider group-data-[collapsible=icon]:hidden">
+                                        Personal
+                                    </div>
+                                    <SidebarMenu className="space-y-1">
+                                        {personalNavItems.map((item) => (
+                                            <SidebarMenuItem key={item.name}>
+                                                <SidebarMenuButton
+                                                    asChild
+                                                    isActive={route().current(item.href)}
+                                                >
+                                                    <Link href={route(item.href)}>
+                                                        <item.icon className="flex-shrink-0" />
+                                                        <span>{item.name}</span>
+                                                    </Link>
+                                                </SidebarMenuButton>
+                                            </SidebarMenuItem>
+                                        ))}
+                                    </SidebarMenu>
+                                </SidebarGroupContent>
+                            </SidebarGroup>
+                        </>
+                    )}
+
+                    {isAdmin && (
+                        <>
+                            <SidebarSeparator />
+                            <SidebarGroup>
+                                <SidebarGroupContent>
+                                    <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider group-data-[collapsible=icon]:hidden">
+                                        Entrepreneur
+                                    </div>
+                                    <SidebarMenu className="space-y-1">
+                                        {adminEntrepreneurNavItems.map((item) => (
+                                            <SidebarMenuItem key={item.name}>
+                                                <SidebarMenuButton
+                                                    asChild
+                                                    isActive={route().current(item.href)}
+                                                >
+                                                    <Link href={route(item.href)}>
+                                                        <item.icon className="flex-shrink-0" />
+                                                        <span>{item.name}</span>
+                                                    </Link>
+                                                </SidebarMenuButton>
+                                            </SidebarMenuItem>
+                                        ))}
+                                    </SidebarMenu>
+                                </SidebarGroupContent>
+                            </SidebarGroup>
+                        </>
+                    )}
+
+
                 </SidebarContent>
 
                 <SidebarFooter>
                     <SidebarSeparator />
                     <SidebarMenu className="space-y-1">
-                        {!isAdmin && (
+                        {(!isAdmin && !isShop) && (
                             <SidebarMenuItem>
                                 <SidebarMenuButton asChild>
                                     <Link href={route("profile.edit")}>
@@ -170,8 +248,8 @@ function AuthenticatedLayoutInner({ user, isAdmin, header, children }) {
 
                     {/* Notification Bell & User Dropdown in Header */}
                     <div className="ml-auto flex items-center gap-2">
-                        {/* Show notification bell only for students (non-admin) */}
-                        {!isAdmin && <NotificationBell />}
+                        {/* Show notification bell only for students (non-admin, non-shop) */}
+                        {(!isAdmin && !isShop) && <NotificationBell />}
 
                         <Dropdown>
                             <Dropdown.Trigger>
@@ -194,7 +272,7 @@ function AuthenticatedLayoutInner({ user, isAdmin, header, children }) {
                                         {user.email}
                                     </p>
                                 </div>
-                                {!isAdmin && (
+                                {(!isAdmin && !isShop) && (
                                     <Dropdown.Link href={route("profile.edit")}>
                                         Profile Settings
                                     </Dropdown.Link>
@@ -218,7 +296,8 @@ function AuthenticatedLayoutInner({ user, isAdmin, header, children }) {
 
 // Main component that provides context
 export default function AuthenticatedLayout({ header, children }) {
-    const user = usePage().props.auth.user;
+    const { auth, isShop } = usePage().props;
+    const user = auth.user;
     const isAdmin = user?.roles?.some((role) => role.name === "admin") || false;
 
     return (
@@ -226,6 +305,7 @@ export default function AuthenticatedLayout({ header, children }) {
             <AuthenticatedLayoutInner
                 user={user}
                 isAdmin={isAdmin}
+                isShop={isShop}
                 header={header}
                 children={children}
             />

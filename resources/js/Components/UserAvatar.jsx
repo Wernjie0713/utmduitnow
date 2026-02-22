@@ -1,4 +1,8 @@
+import { useState } from 'react';
+
 export default function UserAvatar({ user, className = "h-10 w-10", showFallback = true }) {
+    const [imgError, setImgError] = useState(false);
+
     const getInitials = (name) => {
         if (!name) return '?';
         return name.charAt(0).toUpperCase();
@@ -24,18 +28,27 @@ export default function UserAvatar({ user, className = "h-10 w-10", showFallback
         return colors[colorIndex];
     };
 
-    if (user.avatar_url) {
+    if (!user) {
+        return (
+            <div className={`${className} bg-gray-500 text-white rounded-full flex items-center justify-center font-bold`} style={{ fontSize: '100%' }}>
+                ?
+            </div>
+        );
+    }
+
+    if (user.avatar_url && !imgError) {
         return (
             <img
                 src={user.avatar_url.startsWith('http') 
                     ? user.avatar_url 
                     : `/storage/${user.avatar_url}`}
-                alt={user.name}
+                alt={user.name || '?'}
                 className={`${className} rounded-full object-cover`}
                 onError={(e) => {
                     if (showFallback) {
+                        setImgError(true);
+                    } else {
                         e.target.style.display = 'none';
-                        e.target.nextSibling.style.display = 'flex';
                     }
                 }}
             />

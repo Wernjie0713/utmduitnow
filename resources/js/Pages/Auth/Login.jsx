@@ -203,7 +203,7 @@ export default function Login({ status, canResetPassword }) {
                         </form>
 
                         {/* Sign up link */}
-                        <div className="mt-6 text-center">
+                        <div className="mt-6 text-center space-y-2">
                             <p className="text-sm text-gray-600">
                                 Don't have an account?{' '}
                                 <Link 
@@ -211,6 +211,15 @@ export default function Login({ status, canResetPassword }) {
                                     className="font-medium text-indigo-600 hover:text-indigo-500"
                                 >
                                     Sign up
+                                </Link>
+                            </p>
+                            <p className="text-sm text-gray-600">
+                                Registering a business unit?{' '}
+                                <Link 
+                                    href={`${route('shop.register')}?from=login`} 
+                                    className="font-medium text-indigo-600 hover:text-indigo-500"
+                                >
+                                    Register here
                                 </Link>
                             </p>
                         </div>

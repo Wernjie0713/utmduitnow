@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Transaction;
 use App\Models\Faculty;
+use App\Models\EntrepreneurUnit;
+use App\Models\EntrepreneurTransaction;
 use App\Services\LeaderboardService;
+use App\Services\EntrepreneurLeaderboardService;
 use App\Services\AnalyticsService;
 use App\Helpers\CompetitionWeekHelper;
 use Illuminate\Http\Request;
@@ -17,11 +20,13 @@ use Illuminate\Support\Facades\DB;
 class AdminDashboardController extends Controller
 {
     protected $leaderboardService;
+    protected $entrepreneurLeaderboardService;
     protected $analyticsService;
 
-    public function __construct(LeaderboardService $leaderboardService, AnalyticsService $analyticsService)
+    public function __construct(LeaderboardService $leaderboardService, EntrepreneurLeaderboardService $entrepreneurLeaderboardService, AnalyticsService $analyticsService)
     {
         $this->leaderboardService = $leaderboardService;
+        $this->entrepreneurLeaderboardService = $entrepreneurLeaderboardService;
         $this->analyticsService = $analyticsService;
     }
 
@@ -46,8 +51,18 @@ class AdminDashboardController extends Controller
         $monthlyLeaderboard = $this->leaderboardService->getMonthlyLeaderboard();
         $allTimeLeaderboard = $this->leaderboardService->getAllTimeLeaderboard();
 
+        // Get entrepreneur leaderboard data
+        $entrepreneurWeeklyLeaderboard = $this->entrepreneurLeaderboardService->getWeeklyLeaderboard();
+        $entrepreneurMonthlyLeaderboard = $this->entrepreneurLeaderboardService->getMonthlyLeaderboard();
+        $entrepreneurAllTimeLeaderboard = $this->entrepreneurLeaderboardService->getAllTimeLeaderboard();
+
+        $currentWeek = CompetitionWeekHelper::getCurrentWeekNumber() ?? 1;
+        $currentMonth = \Carbon\Carbon::now()->month;
+
         return Inertia::render('Admin/Dashboard', [
             'stats' => $stats,
+            'currentWeek' => $currentWeek,
+            'currentMonth' => $currentMonth,
             'leaderboards' => [
                 'weekly' => $weeklyLeaderboard,
                 'monthly' => $monthlyLeaderboard,
@@ -71,6 +86,16 @@ class AdminDashboardController extends Controller
                     'all_time' => $this->analyticsService->getYearParticipation('all_time'),
                 ],
             ],
+            'entrepreneurStats' => [
+                'total_units' => EntrepreneurUnit::count(),
+                'total_transactions' => EntrepreneurTransaction::count(),
+                'total_amount' => EntrepreneurTransaction::sum('amount'),
+            ],
+            'entrepreneurLeaderboards' => [
+                'weekly' => $entrepreneurWeeklyLeaderboard,
+                'monthly' => $entrepreneurMonthlyLeaderboard,
+                'allTime' => $entrepreneurAllTimeLeaderboard,
+            ],
         ]);
     }
 
@@ -86,16 +111,22 @@ class AdminDashboardController extends Controller
 
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
+        $mode = $request->input('mode', 'personal');
 
-        // Get leaderboard for custom range
-        $leaderboard = $this->leaderboardService->getCustomRangeLeaderboard($startDate, $endDate);
+        if ($mode === 'entrepreneur') {
+            $leaderboard = $this->entrepreneurLeaderboardService->getCustomRangeLeaderboard($startDate, $endDate);
+            $analyticsData = []; // Entrepreneur specific charts can be added here if needed in future
+        } else {
+            // Get leaderboard for custom range
+            $leaderboard = $this->leaderboardService->getCustomRangeLeaderboard($startDate, $endDate);
 
-        // Get analytics data for custom range
-        $analyticsData = [
-            'trends' => $this->analyticsService->getTransactionTrendsCustom($startDate, $endDate),
-            'faculty' => $this->analyticsService->getFacultyComparisonCustom($startDate, $endDate),
-            'years' => $this->analyticsService->getYearParticipationCustom($startDate, $endDate),
-        ];
+            // Get analytics data for custom range
+            $analyticsData = [
+                'trends' => $this->analyticsService->getTransactionTrendsCustom($startDate, $endDate),
+                'faculty' => $this->analyticsService->getFacultyComparisonCustom($startDate, $endDate),
+                'years' => $this->analyticsService->getYearParticipationCustom($startDate, $endDate),
+            ];
+        }
 
         return response()->json([
             'leaderboard' => $leaderboard,
@@ -104,6 +135,41 @@ class AdminDashboardController extends Controller
                 'start_date' => $startDate,
                 'end_date' => $endDate,
             ],
+        ]);
+    }
+
+    /**
+     * Get period specific data for leaderboard (weekly or monthly)
+     */
+    public function getPeriodData(Request $request)
+    {
+        $request->validate([
+            'period' => 'required|in:weekly,monthly',
+            'value' => 'required|numeric',
+            'mode' => 'nullable|in:personal,entrepreneur',
+        ]);
+
+        $period = $request->input('period');
+        $value = $request->input('value');
+        $mode = $request->input('mode', 'personal');
+        $year = $request->input('year', 2025); // defaulting to competition year
+
+        if ($period === 'weekly') {
+            if ($mode === 'entrepreneur') {
+                $leaderboard = $this->entrepreneurLeaderboardService->getWeekLeaderboard($value);
+            } else {
+                $leaderboard = $this->leaderboardService->getWeekLeaderboard($value);
+            }
+        } else { // monthly
+            if ($mode === 'entrepreneur') {
+                $leaderboard = $this->entrepreneurLeaderboardService->getMonthlyLeaderboard($value, $year);
+            } else {
+                $leaderboard = $this->leaderboardService->getMonthlyLeaderboard($value, $year);
+            }
+        }
+
+        return response()->json([
+            'leaderboard' => $leaderboard,
         ]);
     }
 
@@ -146,7 +212,7 @@ class AdminDashboardController extends Controller
             }
         } elseif ($period === 'monthly') {
             $query->whereMonth('approved_at', now()->month)
-                  ->whereYear('approved_at', now()->year);
+                ->whereYear('approved_at', now()->year);
         }
 
         $transactions = $query->orderBy('approved_at', 'desc')->get();
@@ -181,7 +247,7 @@ class AdminDashboardController extends Controller
         $endDate = $request->input('end_date');
 
         $filename = "leaderboard_{$period}_top{$limit}_" . now()->format('Y-m-d_His') . ".csv";
-        
+
         $headers = [
             'Content-Type' => 'text/csv',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
@@ -191,11 +257,11 @@ class AdminDashboardController extends Controller
         if ($period === 'all') {
             $callback = function () use ($limit) {
                 $file = fopen('php://output', 'w');
-                
+
                 // Weekly Leaderboard
                 fputcsv($file, ['=== WEEKLY LEADERBOARD (Top ' . $limit . ') ===']);
                 fputcsv($file, ['Rank', 'Matric No', 'Name', 'Phone Number', 'Faculty', 'Year', 'Transaction Count']);
-                
+
                 $weeklyLeaderboard = $this->leaderboardService->getWeeklyLeaderboard()->take($limit);
                 foreach ($weeklyLeaderboard as $entry) {
                     fputcsv($file, [
@@ -208,13 +274,13 @@ class AdminDashboardController extends Controller
                         $entry->transaction_count,
                     ]);
                 }
-                
+
                 fputcsv($file, []); // Empty row separator
-                
+
                 // Monthly Leaderboard
                 fputcsv($file, ['=== MONTHLY LEADERBOARD (Top ' . $limit . ') ===']);
                 fputcsv($file, ['Rank', 'Matric No', 'Name', 'Phone Number', 'Faculty', 'Year', 'Transaction Count']);
-                
+
                 $monthlyLeaderboard = $this->leaderboardService->getMonthlyLeaderboard()->take($limit);
                 foreach ($monthlyLeaderboard as $entry) {
                     fputcsv($file, [
@@ -227,13 +293,13 @@ class AdminDashboardController extends Controller
                         $entry->transaction_count,
                     ]);
                 }
-                
+
                 fputcsv($file, []); // Empty row separator
-                
+
                 // All-Time Leaderboard
                 fputcsv($file, ['=== ALL-TIME LEADERBOARD (Top ' . $limit . ') ===']);
                 fputcsv($file, ['Rank', 'Matric No', 'Name', 'Phone Number', 'Faculty', 'Year', 'Transaction Count']);
-                
+
                 $allTimeLeaderboard = $this->leaderboardService->getAllTimeLeaderboard()->take($limit);
                 foreach ($allTimeLeaderboard as $entry) {
                     fputcsv($file, [
@@ -246,7 +312,7 @@ class AdminDashboardController extends Controller
                         $entry->transaction_count,
                     ]);
                 }
-                
+
                 fclose($file);
             };
         } else {
@@ -263,10 +329,10 @@ class AdminDashboardController extends Controller
 
             $callback = function () use ($leaderboard) {
                 $file = fopen('php://output', 'w');
-                
+
                 // Add CSV headers
                 fputcsv($file, ['Rank', 'Matric No', 'Name', 'Phone Number', 'Faculty', 'Year', 'Transaction Count']);
-                
+
                 // Add data rows
                 foreach ($leaderboard as $entry) {
                     fputcsv($file, [
@@ -279,7 +345,7 @@ class AdminDashboardController extends Controller
                         $entry->transaction_count,
                     ]);
                 }
-                
+
                 fclose($file);
             };
         }
@@ -294,22 +360,25 @@ class AdminDashboardController extends Controller
     {
         $search = $request->input('search');
         $perPage = $request->input('per_page', 10);
-        
+
         $query = User::with('faculty')
-            ->where('id', '!=', Auth::id()); // Exclude current admin
-        
+            ->where('id', '!=', Auth::id()) // Exclude current admin
+            ->whereDoesntHave('roles', function ($q) {
+                $q->where('name', 'shop');
+            });
+
         if ($search) {
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'LIKE', "%{$search}%")
-                  ->orWhere('email', 'LIKE', "%{$search}%")
-                  ->orWhere('matric_no', 'LIKE', "%{$search}%")
-                  ->orWhere('phone_number', 'LIKE', "%{$search}%")
-                  ->orWhere('duitnow_id', 'LIKE', "%{$search}%");
+                    ->orWhere('email', 'LIKE', "%{$search}%")
+                    ->orWhere('matric_no', 'LIKE', "%{$search}%")
+                    ->orWhere('phone_number', 'LIKE', "%{$search}%")
+                    ->orWhere('duitnow_id', 'LIKE', "%{$search}%");
             });
         }
-        
+
         $users = $query->orderBy('created_at', 'desc')->paginate($perPage);
-        
+
         return Inertia::render('Admin/Users/Index', [
             'users' => $users,
             'filters' => [
@@ -325,24 +394,27 @@ class AdminDashboardController extends Controller
     public function exportUsers(Request $request)
     {
         $search = $request->input('search');
-        
+
         $query = User::with('faculty')
-            ->where('id', '!=', Auth::id()); // Exclude current admin
-        
+            ->where('id', '!=', Auth::id()) // Exclude current admin
+            ->whereDoesntHave('roles', function ($q) {
+                $q->where('name', 'shop');
+            });
+
         if ($search) {
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'LIKE', "%{$search}%")
-                  ->orWhere('email', 'LIKE', "%{$search}%")
-                  ->orWhere('matric_no', 'LIKE', "%{$search}%")
-                  ->orWhere('phone_number', 'LIKE', "%{$search}%")
-                  ->orWhere('duitnow_id', 'LIKE', "%{$search}%");
+                    ->orWhere('email', 'LIKE', "%{$search}%")
+                    ->orWhere('matric_no', 'LIKE', "%{$search}%")
+                    ->orWhere('phone_number', 'LIKE', "%{$search}%")
+                    ->orWhere('duitnow_id', 'LIKE', "%{$search}%");
             });
         }
-        
+
         $users = $query->orderBy('created_at', 'desc')->get();
-        
+
         $filename = "users_" . now()->format('Y-m-d_His') . ".csv";
-        
+
         $headers = [
             'Content-Type' => 'text/csv',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
@@ -350,7 +422,7 @@ class AdminDashboardController extends Controller
 
         $callback = function () use ($users) {
             $file = fopen('php://output', 'w');
-            
+
             // Add CSV headers
             fputcsv($file, [
                 'Name',
@@ -363,7 +435,7 @@ class AdminDashboardController extends Controller
                 'Email Verified',
                 'Registered At'
             ]);
-            
+
             // Add data rows
             foreach ($users as $user) {
                 fputcsv($file, [
@@ -378,7 +450,7 @@ class AdminDashboardController extends Controller
                     $user->created_at->format('Y-m-d H:i:s'),
                 ]);
             }
-            
+
             fclose($file);
         };
 
