@@ -40,13 +40,13 @@ class DashboardController extends Controller
      */
     private function studentDashboard($user)
     {
-        // Check if we're in Week 3 extended submission period
-        $isExtendedPeriod = CompetitionWeekHelper::isInWeek3ExtendedSubmissionPeriod();
+        // Check if we're in Week 12 extended submission period
+        $isExtendedPeriod = CompetitionWeekHelper::isInWeek12ExtendedSubmissionPeriod();
 
         if ($isExtendedPeriod) {
-            // During extended period, show Week 3 and Week 4 leaderboards
-            $week3Data = $this->leaderboardService->getTop20WithUserPositionForWeek($user->id, 3);
-            $week4Data = $this->leaderboardService->getTop20WithUserPositionForWeek($user->id, 4);
+            // During extended period, show Week 12 and Week 13 leaderboards
+            $week12Data = $this->leaderboardService->getTop20WithUserPositionForWeek($user->id, 12);
+            $week13Data = $this->leaderboardService->getTop20WithUserPositionForWeek($user->id, 13);
             $monthlyData = $this->leaderboardService->getTop20WithUserPosition($user->id, 'monthly');
             $allTimeData = $this->leaderboardService->getTop20WithUserPosition($user->id, 'all_time', null, null, false);
 
@@ -57,9 +57,9 @@ class DashboardController extends Controller
                 'can_submit_today' => $user->canSubmitToday(),
                 'max_submissions_per_day' => config('app.max_submissions_per_day'),
 
-                // Rankings - use Week 4 for weekly rank during extended period
-                'weekly_rank' => $week4Data['user_position']['rank'] ?? null,
-                'weekly_total' => $week4Data['total_users'] ?? 0,
+                // Rankings - use Week 13 for weekly rank during extended period
+                'weekly_rank' => $week13Data['user_position']['rank'] ?? null,
+                'weekly_total' => $week13Data['total_users'] ?? 0,
                 'monthly_rank' => $monthlyData['user_position']['rank'] ?? null,
                 'monthly_total' => $monthlyData['total_users'] ?? 0,
                 'alltime_rank' => $allTimeData['user_position']['rank'] ?? null,
@@ -70,18 +70,18 @@ class DashboardController extends Controller
                 'stats' => $stats,
                 'isExtendedPeriod' => true,
                 'leaderboards' => [
-                    'week3' => $week3Data,
-                    'week4' => $week4Data,
+                    'week12' => $week12Data,
+                    'week13' => $week13Data,
                     'monthly' => $monthlyData,
                     'allTime' => $allTimeData,
                 ],
-                'extendedSubmissionEnd' => CompetitionWeekHelper::getWeek3ExtendedSubmissionEndString(),
+                'extendedSubmissionEnd' => CompetitionWeekHelper::getWeek12ExtendedSubmissionEndString(),
                 'showCompetitionAnnouncement' => $this->shouldShowCompetitionAnnouncement($user),
             ]);
         } else {
             // Normal period, show current week leaderboard
             // Get Top 20 leaderboard data with user position
-            // For students, all_time shows only from Nov 1, 2025 onwards
+            // For students, all_time shows only from Sep 1, 2025 onwards
             $weeklyData = $this->leaderboardService->getTop20WithUserPosition($user->id, 'weekly');
             $monthlyData = $this->leaderboardService->getTop20WithUserPosition($user->id, 'monthly');
             $allTimeData = $this->leaderboardService->getTop20WithUserPosition($user->id, 'all_time', null, null, false);
@@ -128,9 +128,9 @@ class DashboardController extends Controller
             return false;
         }
 
-        // Only show to users created on or before Nov 1, 2025
-        // New users after Nov 1 don't need to see this announcement
-        $announcementCutoffDate = Carbon::parse('2025-11-01 23:59:59', 'Asia/Kuala_Lumpur');
+        // Only show to users created on or before Sep 1, 2025
+        // New users after Sep 1 don't need to see this announcement
+        $announcementCutoffDate = Carbon::parse('2025-09-01 23:59:59', 'Asia/Kuala_Lumpur');
 
         return $user->created_at->lte($announcementCutoffDate);
     }

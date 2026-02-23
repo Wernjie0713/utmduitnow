@@ -22,21 +22,21 @@ class CleanPreCompetitionTransactions extends Command
      *
      * @var string
      */
-    protected $description = 'Remove all transactions dated BEFORE Nov 1, 2025 (competition start date) - No confirmation required';
+    protected $description = 'Remove all transactions dated BEFORE Sep 1, 2025 (competition start date) - No confirmation required';
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        $competitionStart = Carbon::parse('2025-11-01 00:00:00', 'Asia/Kuala_Lumpur');
-        
-        $this->info('🔍 Searching for transactions dated BEFORE Nov 1, 2025...');
+        $competitionStart = Carbon::parse('2025-09-01 00:00:00', 'Asia/Kuala_Lumpur');
+
+        $this->info('🔍 Searching for transactions dated BEFORE Sep 1, 2025...');
         $this->newLine();
-        
+
         // Get transactions BEFORE competition start (only transactions dated < Nov 1, 2025)
         $transactionsToDelete = Transaction::where('transaction_date', '<', $competitionStart)->get();
-        
+
         if ($transactionsToDelete->isEmpty()) {
             $this->info('✓ No pre-competition transactions found to delete.');
             $this->info('  Database is clean and ready for competition!');
@@ -44,15 +44,15 @@ class CleanPreCompetitionTransactions extends Command
         }
 
         $count = $transactionsToDelete->count();
-        $this->warn("⚠️  Found {$count} transaction(s) dated BEFORE Nov 1, 2025");
+        $this->warn("⚠️  Found {$count} transaction(s) dated BEFORE Sep 1, 2025");
         $this->newLine();
-        
+
         // Show summary by status
         $summary = $transactionsToDelete->groupBy('status')->map->count();
         $this->table(
             ['Status', 'Count'],
             $summary->map(fn($count, $status) => [
-                ucfirst($status), 
+                ucfirst($status),
                 $count
             ])->toArray()
         );
@@ -89,29 +89,28 @@ class CleanPreCompetitionTransactions extends Command
                 }
                 $bar->advance();
             }
-            
+
             $bar->finish();
             $this->newLine(2);
 
-            // Delete only transactions dated BEFORE Nov 1, 2025
+            // Delete only transactions dated BEFORE Sep 1, 2025
             $deleted = Transaction::where('transaction_date', '<', $competitionStart)->delete();
-            
+
             DB::commit();
-            
+
             $this->newLine();
             $this->info("✅ Successfully deleted {$deleted} pre-competition transaction(s).");
             $this->info("📁 Deleted {$deletedFiles} receipt file(s) from storage.");
             $this->newLine();
             $this->line("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             $this->info("🏁 Competition database is now clean!");
-            $this->info("📅 Competition starts: Nov 1, 2025 (Week 1: Nov 1-9)");
-            $this->comment("✓ Only transactions dated BEFORE Nov 1, 2025 were removed");
-            $this->comment("✓ Transactions dated Nov 1, 2025 and later are preserved");
+            $this->info("📅 Competition starts: Sep 1, 2025");
+            $this->comment("✓ Only transactions dated BEFORE Sep 1, 2025 were removed");
+            $this->comment("✓ Transactions dated Sep 1, 2025 and later are preserved");
             $this->line("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             $this->newLine();
-            
+
             return 0;
-            
         } catch (\Exception $e) {
             DB::rollBack();
             $this->newLine(2);

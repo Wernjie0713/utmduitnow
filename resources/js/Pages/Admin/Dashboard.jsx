@@ -35,7 +35,7 @@ export default function Dashboard({
     const [selectedLeaderboardTab, setSelectedLeaderboardTab] = useState('weekly');
     
     // Period selectors for the leaderboard
-    const [selectedWeek, setSelectedWeek] = useState('8');
+    const [selectedWeek, setSelectedWeek] = useState('17');
     const [selectedMonth, setSelectedMonth] = useState('12');
     const [periodLeaderboard, setPeriodLeaderboard] = useState(null);
     const [isLoadingPeriod, setIsLoadingPeriod] = useState(false);
@@ -497,14 +497,23 @@ export default function Dashboard({
                                                         <SelectValue placeholder="Select Week" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="1">Week 1 (Nov 1-9)</SelectItem>
-                                                        <SelectItem value="2">Week 2 (Nov 10-16)</SelectItem>
-                                                        <SelectItem value="3">Week 3 (Nov 17-23)</SelectItem>
-                                                        <SelectItem value="4">Week 4 (Nov 24-30)</SelectItem>
-                                                        <SelectItem value="5">Week 5 (Dec 1-7)</SelectItem>
-                                                        <SelectItem value="6">Week 6 (Dec 8-14)</SelectItem>
-                                                        <SelectItem value="7">Week 7 (Dec 15-21)</SelectItem>
-                                                        <SelectItem value="8">Week 8 (Dec 22-28)</SelectItem>
+                                                        <SelectItem value="1">Week 1 (Sep 1-7)</SelectItem>
+                                                        <SelectItem value="2">Week 2 (Sep 8-14)</SelectItem>
+                                                        <SelectItem value="3">Week 3 (Sep 15-21)</SelectItem>
+                                                        <SelectItem value="4">Week 4 (Sep 22-28)</SelectItem>
+                                                        <SelectItem value="5">Week 5 (Sep 29-Oct 5)</SelectItem>
+                                                        <SelectItem value="6">Week 6 (Oct 6-12)</SelectItem>
+                                                        <SelectItem value="7">Week 7 (Oct 13-19)</SelectItem>
+                                                        <SelectItem value="8">Week 8 (Oct 20-26)</SelectItem>
+                                                        <SelectItem value="9">Week 9 (Oct 27-Nov 2)</SelectItem>
+                                                        <SelectItem value="10">Week 10 (Nov 3-9)</SelectItem>
+                                                        <SelectItem value="11">Week 11 (Nov 10-16)</SelectItem>
+                                                        <SelectItem value="12">Week 12 (Nov 17-23)</SelectItem>
+                                                        <SelectItem value="13">Week 13 (Nov 24-30)</SelectItem>
+                                                        <SelectItem value="14">Week 14 (Dec 1-7)</SelectItem>
+                                                        <SelectItem value="15">Week 15 (Dec 8-14)</SelectItem>
+                                                        <SelectItem value="16">Week 16 (Dec 15-21)</SelectItem>
+                                                        <SelectItem value="17">Week 17 (Dec 22-28)</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -521,7 +530,12 @@ export default function Dashboard({
                                             <div>
                                                 <h3 className="text-lg font-semibold">Monthly Rankings</h3>
                                                 <p className="text-sm text-gray-600">
-                                                    {selectedMonth === '11' ? 'November 2025' : 'December 2025'}
+                                                    {{
+                                                        '9': 'September 2025',
+                                                        '10': 'October 2025',
+                                                        '11': 'November 2025',
+                                                        '12': 'December 2025',
+                                                    }[selectedMonth] || 'Select a month'}
                                                 </p>
                                             </div>
                                             <div className="flex items-center gap-2">
@@ -530,6 +544,8 @@ export default function Dashboard({
                                                         <SelectValue placeholder="Select Month" />
                                                     </SelectTrigger>
                                                     <SelectContent>
+                                                        <SelectItem value="9">September 2025</SelectItem>
+                                                        <SelectItem value="10">October 2025</SelectItem>
                                                         <SelectItem value="11">November 2025</SelectItem>
                                                         <SelectItem value="12">December 2025</SelectItem>
                                                     </SelectContent>

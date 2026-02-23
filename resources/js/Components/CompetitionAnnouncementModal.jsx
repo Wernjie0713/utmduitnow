@@ -56,7 +56,7 @@ export default function CompetitionAnnouncementModal({ show }) {
                         </h3>
                         <p className="text-sm text-red-800 dark:text-red-200">
                             Due to a programming error in our system, we have removed all transaction records 
-                            that were dated <strong>before November 1, 2025</strong>. We understand this may have 
+                            that were dated <strong>before September 1, 2025</strong>. We understand this may have 
                             caused inconvenience, and we sincerely apologize for this mistake.
                         </p>
                     </div>
@@ -72,22 +72,7 @@ export default function CompetitionAnnouncementModal({ show }) {
                                 <CheckCircle2 className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                                 <div>
                                     <p className="font-semibold text-blue-900 dark:text-blue-100">
-                                        Week 1 (Special - 9 Days)
-                                    </p>
-                                    <p className="text-sm text-blue-800 dark:text-blue-200">
-                                        November 1 - November 9, 2025
-                                    </p>
-                                    <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                                        Saturday to Sunday (includes today and tomorrow + next Monday-Sunday)
-                                    </p>
-                                </div>
-                            </div>
-                            
-                            <div className="flex items-start gap-3">
-                                <CheckCircle2 className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                                <div>
-                                    <p className="font-semibold text-blue-900 dark:text-blue-100">
-                                        Week 2 Onwards (Standard - 7 Days Each)
+                                        Standard Competition Weeks (7 Days Each)
                                     </p>
                                     <p className="text-sm text-blue-800 dark:text-blue-200">
                                         Monday 00:00 - Sunday 23:59
@@ -121,7 +106,7 @@ export default function CompetitionAnnouncementModal({ show }) {
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-yellow-600 dark:text-yellow-400 mt-0.5">•</span>
-                                <span>If you had previous transactions, please <strong>resubmit them</strong> if they fall within Week 1 (Nov 1-9)</span>
+                                <span>If you had previous transactions, please <strong>resubmit them</strong> if they fall within the valid competition period (September 1 onwards)</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-yellow-600 dark:text-yellow-400 mt-0.5">•</span>

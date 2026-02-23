@@ -70,8 +70,8 @@ class LeaderboardService
             // Admin view: show all transactions
             return $this->getLeaderboard('all_time');
         } else {
-            // Normal user view: show only from Nov 1, 2025 onwards
-            $startDate = Carbon::create(2025, 11, 1)->startOfDay();
+            // Normal user view: show only from Sep 1, 2025 onwards
+            $startDate = Carbon::create(2025, 9, 1)->startOfDay();
             return $this->getLeaderboard('all_time', $startDate, null);
         }
     }

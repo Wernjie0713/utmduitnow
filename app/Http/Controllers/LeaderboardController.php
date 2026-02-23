@@ -25,8 +25,8 @@ class LeaderboardController extends Controller
         $userId = Auth::id();
         $isAdmin = Auth::user()->roles->contains('name', 'admin');
 
-        // Check if we're in Week 3 extended submission period
-        $isExtendedPeriod = CompetitionWeekHelper::isInWeek3ExtendedSubmissionPeriod();
+        // Check if we're in Week 12 extended submission period
+        $isExtendedPeriod = CompetitionWeekHelper::isInWeek12ExtendedSubmissionPeriod();
 
         // Check if competition has ended
         $hasEnded = CompetitionWeekHelper::hasCompetitionEnded();
@@ -36,21 +36,21 @@ class LeaderboardController extends Controller
         $selectedYear = $request->input('year');
 
         if ($isExtendedPeriod) {
-            // During extended period, show Week 3 and Week 4 leaderboards
-            $week3Data = $this->leaderboardService->getTop20WithUserPositionForWeek($userId, 3);
-            $week4Data = $this->leaderboardService->getTop20WithUserPositionForWeek($userId, 4);
+            // During extended period, show Week 12 and Week 13 leaderboards
+            $week12Data = $this->leaderboardService->getTop20WithUserPositionForWeek($userId, 12);
+            $week13Data = $this->leaderboardService->getTop20WithUserPositionForWeek($userId, 13);
             $monthlyData = $this->leaderboardService->getTop20WithUserPosition($userId, 'monthly', $selectedMonth, $selectedYear);
             $allTimeData = $this->leaderboardService->getTop20WithUserPosition($userId, 'all_time', null, null, $isAdmin);
 
             return Inertia::render('Leaderboard/Index', [
                 'isExtendedPeriod' => true,
-                'week3Data' => $week3Data,
-                'week4Data' => $week4Data,
+                'week12Data' => $week12Data,
+                'week13Data' => $week13Data,
                 'monthlyData' => $monthlyData,
                 'allTimeData' => $allTimeData,
-                'extendedSubmissionEnd' => CompetitionWeekHelper::getWeek3ExtendedSubmissionEndString(),
+                'extendedSubmissionEnd' => CompetitionWeekHelper::getWeek12ExtendedSubmissionEndString(),
                 'hasEnded' => $hasEnded,
-                'activeTab' => $selectedMonth ? 'monthly' : 'week3',
+                'activeTab' => $selectedMonth ? 'monthly' : 'week12',
             ]);
         } else {
             // Normal period or after competition ended

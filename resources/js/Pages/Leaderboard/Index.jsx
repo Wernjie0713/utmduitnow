@@ -22,9 +22,10 @@ export default function Index({
     auth,
     isExtendedPeriod = false,
     weeklyData,
-    week3Data,
-    week4Data,
+    week12Data,
+    week13Data,
     monthlyData,
+    extendedSubmissionEnd = 'November 26, 2025 at 11:59 PM',
     allTimeData,
     hasEnded = false,
     selectedWeek = null,
@@ -203,10 +204,10 @@ export default function Index({
                             {isExtendedPeriod && (
                                 <Alert className="mb-6 border-blue-200 bg-blue-50">
                                     <AlertCircle className="h-4 w-4 text-blue-600" />
-                                    <AlertTitle className="text-blue-900">Week 3 Extended Submission Period</AlertTitle>
+                                    <AlertTitle className="text-blue-900">Week 12 Extended Submission Period</AlertTitle>
                                     <AlertDescription className="text-blue-800">
-                                        Due to server downtime earlier this week, Week 3 submissions have been extended until{' '}
-                                        <strong>{extendedSubmissionEnd}</strong>. You can submit both Week 3 (Nov 17-23) and Week 4 (Nov 24-30) transactions during this period.
+                                        Due to server downtime earlier this week, Week 12 submissions have been extended until{' '}
+                                        <strong>{extendedSubmissionEnd}</strong>. You can submit both Week 12 (Nov 17-23) and Week 13 (Nov 24-30) transactions during this period.
                                     </AlertDescription>
                                 </Alert>
                             )}
@@ -214,8 +215,8 @@ export default function Index({
                             {isExtendedPeriod ? (
                                 <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
                                     <TabsList className="grid w-full grid-cols-4 mb-6">
-                                        <TabsTrigger value="week3">Week 3</TabsTrigger>
-                                        <TabsTrigger value="week4">Week 4</TabsTrigger>
+                                        <TabsTrigger value="week12">Week 12</TabsTrigger>
+                                        <TabsTrigger value="week13">Week 13</TabsTrigger>
                                         <TabsTrigger value="monthly">Monthly</TabsTrigger>
                                         <TabsTrigger value="all-time">All-Time</TabsTrigger>
                                     </TabsList>
@@ -227,6 +228,8 @@ export default function Index({
                                                     <SelectValue placeholder="Select Month" />
                                                 </SelectTrigger>
                                                 <SelectContent>
+                                                    <SelectItem value="9">September 2025</SelectItem>
+                                                    <SelectItem value="10">October 2025</SelectItem>
                                                     <SelectItem value="11">November 2025</SelectItem>
                                                     <SelectItem value="12">December 2025</SelectItem>
                                                 </SelectContent>
@@ -234,24 +237,24 @@ export default function Index({
                                         )}
                                     </div>
 
-                                    <TabsContent value="week3" className="mt-6">
+                                    <TabsContent value="week12" className="mt-6">
                                         <div className="mb-4">
-                                            <h3 className="text-lg font-semibold">Week 3: November 17 - 23, 2025</h3>
+                                            <h3 className="text-lg font-semibold">Week 12: November 17 - 23, 2025</h3>
                                             <p className="text-sm text-gray-600">
                                                 Extended submission until {extendedSubmissionEnd}
                                             </p>
                                         </div>
-                                        {renderLeaderboard(week3Data)}
+                                        {renderLeaderboard(week12Data)}
                                     </TabsContent>
 
-                                    <TabsContent value="week4" className="mt-6">
+                                    <TabsContent value="week13" className="mt-6">
                                         <div className="mb-4">
-                                            <h3 className="text-lg font-semibold">Week 4: November 24 - 30, 2025</h3>
+                                            <h3 className="text-lg font-semibold">Week 13: November 24 - 30, 2025</h3>
                                             <p className="text-sm text-gray-600">
                                                 Current week
                                             </p>
                                         </div>
-                                        {renderLeaderboard(week4Data)}
+                                        {renderLeaderboard(week13Data)}
                                     </TabsContent>
 
                                     <TabsContent value="monthly" className="mt-6">
@@ -273,7 +276,7 @@ export default function Index({
                                             <p className="text-sm text-gray-600">
                                                 {isAdmin 
                                                     ? 'Since the beginning of the competition' 
-                                                    : 'Since November 1, 2025'
+                                                    : 'Since September 1, 2025'
                                                 }
                                             </p>
                                         </div>
@@ -295,14 +298,23 @@ export default function Index({
                                                     <SelectValue placeholder="Select Week" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="1">Week 1 (Nov 1-9)</SelectItem>
-                                                    <SelectItem value="2">Week 2 (Nov 10-16)</SelectItem>
-                                                    <SelectItem value="3">Week 3 (Nov 17-23)</SelectItem>
-                                                    <SelectItem value="4">Week 4 (Nov 24-30)</SelectItem>
-                                                    <SelectItem value="5">Week 5 (Dec 1-7)</SelectItem>
-                                                    <SelectItem value="6">Week 6 (Dec 8-14)</SelectItem>
-                                                    <SelectItem value="7">Week 7 (Dec 15-21)</SelectItem>
-                                                    <SelectItem value="8">Week 8 (Dec 22-28)</SelectItem>
+                                                    <SelectItem value="1">Week 1 (Sep 1-7)</SelectItem>
+                                                    <SelectItem value="2">Week 2 (Sep 8-14)</SelectItem>
+                                                    <SelectItem value="3">Week 3 (Sep 15-21)</SelectItem>
+                                                    <SelectItem value="4">Week 4 (Sep 22-28)</SelectItem>
+                                                    <SelectItem value="5">Week 5 (Sep 29-Oct 5)</SelectItem>
+                                                    <SelectItem value="6">Week 6 (Oct 6-12)</SelectItem>
+                                                    <SelectItem value="7">Week 7 (Oct 13-19)</SelectItem>
+                                                    <SelectItem value="8">Week 8 (Oct 20-26)</SelectItem>
+                                                    <SelectItem value="9">Week 9 (Oct 27-Nov 2)</SelectItem>
+                                                    <SelectItem value="10">Week 10 (Nov 3-9)</SelectItem>
+                                                    <SelectItem value="11">Week 11 (Nov 10-16)</SelectItem>
+                                                    <SelectItem value="12">Week 12 (Nov 17-23)</SelectItem>
+                                                    <SelectItem value="13">Week 13 (Nov 24-30)</SelectItem>
+                                                    <SelectItem value="14">Week 14 (Dec 1-7)</SelectItem>
+                                                    <SelectItem value="15">Week 15 (Dec 8-14)</SelectItem>
+                                                    <SelectItem value="16">Week 16 (Dec 15-21)</SelectItem>
+                                                    <SelectItem value="17">Week 17 (Dec 22-28)</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         )}
@@ -313,6 +325,8 @@ export default function Index({
                                                     <SelectValue placeholder="Select Month" />
                                                 </SelectTrigger>
                                                 <SelectContent>
+                                                    <SelectItem value="9">September 2025</SelectItem>
+                                                    <SelectItem value="10">October 2025</SelectItem>
                                                     <SelectItem value="11">November 2025</SelectItem>
                                                     <SelectItem value="12">December 2025</SelectItem>
                                                 </SelectContent>

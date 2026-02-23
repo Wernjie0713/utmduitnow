@@ -8,23 +8,22 @@ use App\Helpers\DateHelper;
 class CompetitionWeekHelper
 {
     /**
-     * Competition start date (November 1, 2025 - Saturday)
-     * Week 1 is special: runs from Nov 1 (Sat) to Nov 9 (Sun) 11:59 PM - 9 days
-     * After that, all weeks follow normal Monday-Sunday pattern
+     * Competition start date (September 1, 2025 - Monday)
+     * All weeks follow normal Monday-Sunday pattern (17 weeks total)
      */
-    const COMPETITION_START_DATE = '2025-11-01 00:00:00';
+    const COMPETITION_START_DATE = '2025-09-01 00:00:00';
 
     /**
-     * Competition end date (December 28, 2025 - Saturday)
+     * Competition end date (December 28, 2025 - Sunday)
      * No receipts will be accepted after this date and time
      */
     const COMPETITION_END_DATE = '2025-12-28 23:59:59';
 
     /**
-     * Week 3 extended submission period
-     * Due to server downtime, Week 3 submissions are extended until Nov 26, 2025 11:59 PM
+     * Week 12 extended submission period (formerly Week 3)
+     * Due to server downtime, Week 12 submissions are extended until Nov 26, 2025 11:59 PM
      */
-    const WEEK_3_EXTENDED_SUBMISSION_END = '2025-11-26 23:59:59';
+    const WEEK_12_EXTENDED_SUBMISSION_END = '2025-11-26 23:59:59';
 
     /**
      * Get the current competition week number
@@ -42,24 +41,8 @@ class CompetitionWeekHelper
             return null;
         }
 
-        // Week 1 ends on Nov 9, 2025 23:59:59 (Sunday)
-        $week1End = Carbon::parse('2025-11-09 23:59:59', 'Asia/Kuala_Lumpur');
-
-        if ($date->lte($week1End)) {
-            return 1;
-        }
-
-        // After Week 1, calculate based on Monday-Sunday weeks
-        $week2Start = Carbon::parse('2025-11-10 00:00:00', 'Asia/Kuala_Lumpur');
-        $daysSinceWeek2Start = $date->diffInDays($week2Start, false);
-
-        if ($daysSinceWeek2Start < 0) {
-            // Date is after week 2 start
-            $weekNumber = 2 + floor(abs($daysSinceWeek2Start) / 7);
-            return (int) $weekNumber;
-        }
-
-        return 2;
+        $daysSinceStart = $competitionStart->diffInDays($date, false);
+        return 1 + (int) floor($daysSinceStart / 7);
     }
 
     /**
@@ -88,21 +71,9 @@ class CompetitionWeekHelper
      */
     public static function getWeekBoundaries(int $weekNumber): array
     {
-        if ($weekNumber === 1) {
-            // Week 1: Nov 1 (Sat) 00:00:00 to Nov 9 (Sun) 23:59:59
-            return [
-                'start' => Carbon::parse('2025-11-01 00:00:00', 'Asia/Kuala_Lumpur'),
-                'end' => Carbon::parse('2025-11-09 23:59:59', 'Asia/Kuala_Lumpur'),
-                'week_number' => 1,
-            ];
-        }
+        $competitionStart = Carbon::parse(self::COMPETITION_START_DATE, 'Asia/Kuala_Lumpur');
 
-        // Week 2 and onwards: Monday 00:00:00 to Sunday 23:59:59
-        $week2Start = Carbon::parse('2025-11-10 00:00:00', 'Asia/Kuala_Lumpur'); // Monday, Nov 10
-        
-        // Calculate the start of the requested week
-        $weeksAfterWeek2 = $weekNumber - 2;
-        $weekStart = $week2Start->copy()->addWeeks($weeksAfterWeek2);
+        $weekStart = $competitionStart->copy()->addWeeks($weekNumber - 1);
         $weekEnd = $weekStart->copy()->endOfWeek(Carbon::SUNDAY);
 
         return [
@@ -133,7 +104,7 @@ class CompetitionWeekHelper
      * Get formatted week range string for display
      * 
      * @param int|null $weekNumber Week number or null for current week
-     * @return string e.g., "Week 1: Nov 1 - Nov 9, 2025"
+     * @return string e.g., "Week 1: Sep 1 - Sep 7, 2025"
      */
     public static function getWeekRangeString(?int $weekNumber = null): string
     {
@@ -193,53 +164,52 @@ class CompetitionWeekHelper
     }
 
     /**
-     * Check if we are currently in the Week 3 extended submission period
-     * Week 3 extended submission: Nov 24 - Nov 26, 2025 11:59 PM
+     * Check if we are currently in the Week 12 extended submission period
+     * Week 12 extended submission: Nov 24 - Nov 26, 2025 11:59 PM
      * 
      * @param Carbon|null $date The date to check (defaults to now)
      * @return bool
      */
-    public static function isInWeek3ExtendedSubmissionPeriod(?Carbon $date = null): bool
+    public static function isInWeek12ExtendedSubmissionPeriod(?Carbon $date = null): bool
     {
         $date = $date ?? DateHelper::now('Asia/Kuala_Lumpur');
-        $week3ExtendedStart = Carbon::parse('2025-11-24 00:00:00', 'Asia/Kuala_Lumpur');
-        $week3ExtendedEnd = Carbon::parse(self::WEEK_3_EXTENDED_SUBMISSION_END, 'Asia/Kuala_Lumpur');
+        $week12ExtendedStart = Carbon::parse('2025-11-24 00:00:00', 'Asia/Kuala_Lumpur');
+        $week12ExtendedEnd = Carbon::parse(self::WEEK_12_EXTENDED_SUBMISSION_END, 'Asia/Kuala_Lumpur');
 
-        return $date->between($week3ExtendedStart, $week3ExtendedEnd);
+        return $date->between($week12ExtendedStart, $week12ExtendedEnd);
     }
 
     /**
-     * Check if a transaction date is valid for Week 3 extended submission
-     * Week 3 period: Nov 17-23, 2025
+     * Check if a transaction date is valid for Week 12 extended submission
+     * Week 12 period: Nov 17-23, 2025
      * Extended submission allowed until: Nov 26, 2025 11:59 PM
      * 
      * @param Carbon $transactionDate The transaction date from the receipt
      * @param Carbon|null $currentDate The current date (defaults to now)
      * @return bool
      */
-    public static function isValidForWeek3ExtendedSubmission(Carbon $transactionDate, ?Carbon $currentDate = null): bool
+    public static function isValidForWeek12ExtendedSubmission(Carbon $transactionDate, ?Carbon $currentDate = null): bool
     {
         $currentDate = $currentDate ?? DateHelper::now('Asia/Kuala_Lumpur');
-        
+
         // Check if we're still in the extended submission period
-        if (!$currentDate->lte(Carbon::parse(self::WEEK_3_EXTENDED_SUBMISSION_END, 'Asia/Kuala_Lumpur'))) {
+        if (!$currentDate->lte(Carbon::parse(self::WEEK_12_EXTENDED_SUBMISSION_END, 'Asia/Kuala_Lumpur'))) {
             return false;
         }
 
-        // Check if transaction date is within Week 3 period (Nov 17-23)
-        $week3Boundaries = self::getWeekBoundaries(3);
-        return $transactionDate->between($week3Boundaries['start'], $week3Boundaries['end']);
+        // Check if transaction date is within Week 12 period (Nov 17-23)
+        $week12Boundaries = self::getWeekBoundaries(12);
+        return $transactionDate->between($week12Boundaries['start'], $week12Boundaries['end']);
     }
 
     /**
-     * Get Week 3 extended submission end date as a formatted string
+     * Get Week 12 extended submission end date as a formatted string
      * 
      * @return string e.g., "November 26, 2025 at 11:59 PM"
      */
-    public static function getWeek3ExtendedSubmissionEndString(): string
+    public static function getWeek12ExtendedSubmissionEndString(): string
     {
-        $endDate = Carbon::parse(self::WEEK_3_EXTENDED_SUBMISSION_END, 'Asia/Kuala_Lumpur');
+        $endDate = Carbon::parse(self::WEEK_12_EXTENDED_SUBMISSION_END, 'Asia/Kuala_Lumpur');
         return $endDate->format('F d, Y \a\t g:i A');
     }
 }
-

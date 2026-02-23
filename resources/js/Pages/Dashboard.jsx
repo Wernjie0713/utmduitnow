@@ -240,7 +240,7 @@ export default function Dashboard({ auth, stats, leaderboards, isExtendedPeriod 
                                 )}
                             </div>
                             <p className="text-xs text-muted-foreground mt-1">
-                                {isAdmin ? 'Overall position' : 'Since Nov 1, 2025'}
+                                {isAdmin ? 'Overall position' : 'Since Sep 1, 2025'}
                             </p>
                         </CardContent>
                     </Card>

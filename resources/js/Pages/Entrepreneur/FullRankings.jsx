@@ -38,7 +38,7 @@ export default function FullRankings({ auth }) {
     const [search, setSearch] = useState('');
     const [searchValue, setSearchValue] = useState('');
     const [period, setPeriod] = useState('weekly');
-    const [selectedWeek, setSelectedWeek] = useState('8'); // Default to last week
+    const [selectedWeek, setSelectedWeek] = useState('17'); // Default to last week
     const [selectedMonth, setSelectedMonth] = useState('12'); // Default to last month
     const [unitPosition, setUnitPosition] = useState(null);
     const [totalPages, setTotalPages] = useState(1);
@@ -182,14 +182,23 @@ export default function FullRankings({ auth }) {
                                             <h3 className="text-lg font-semibold">Week {selectedWeek}</h3>
                                             <p className="text-sm text-gray-600">
                                                 {{
-                                                    '1': 'Nov 1 - 9, 2025',
-                                                    '2': 'Nov 10 - 16, 2025',
-                                                    '3': 'Nov 17 - 23, 2025',
-                                                    '4': 'Nov 24 - 30, 2025',
-                                                    '5': 'Dec 1 - 7, 2025',
-                                                    '6': 'Dec 8 - 14, 2025',
-                                                    '7': 'Dec 15 - 21, 2025',
-                                                    '8': 'Dec 22 - 28, 2025',
+                                                    '1': 'Sep 1 - 7, 2025',
+                                                    '2': 'Sep 8 - 14, 2025',
+                                                    '3': 'Sep 15 - 21, 2025',
+                                                    '4': 'Sep 22 - 28, 2025',
+                                                    '5': 'Sep 29 - Oct 5, 2025',
+                                                    '6': 'Oct 6 - 12, 2025',
+                                                    '7': 'Oct 13 - 19, 2025',
+                                                    '8': 'Oct 20 - 26, 2025',
+                                                    '9': 'Oct 27 - Nov 2, 2025',
+                                                    '10': 'Nov 3 - 9, 2025',
+                                                    '11': 'Nov 10 - 16, 2025',
+                                                    '12': 'Nov 17 - 23, 2025',
+                                                    '13': 'Nov 24 - 30, 2025',
+                                                    '14': 'Dec 1 - 7, 2025',
+                                                    '15': 'Dec 8 - 14, 2025',
+                                                    '16': 'Dec 15 - 21, 2025',
+                                                    '17': 'Dec 22 - 28, 2025',
                                                 }[selectedWeek] || 'Select a week'}
                                             </p>
                                         </>
@@ -198,6 +207,8 @@ export default function FullRankings({ auth }) {
                                         <>
                                             <h3 className="text-lg font-semibold">
                                                 {{
+                                                    '9': 'September 2025',
+                                                    '10': 'October 2025',
                                                     '11': 'November 2025',
                                                     '12': 'December 2025',
                                                 }[selectedMonth] || 'Select a month'}
@@ -213,7 +224,7 @@ export default function FullRankings({ auth }) {
                                             <p className="text-sm text-gray-600">
                                                 {isAdmin 
                                                     ? 'Since the beginning of the competition' 
-                                                    : 'Since November 1, 2025'
+                                                    : 'Since September 1, 2025'
                                                 }
                                             </p>
                                         </>
@@ -284,14 +295,23 @@ export default function FullRankings({ auth }) {
                                                         <SelectValue placeholder="Select Week" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="1">Week 1 (Nov 1-9)</SelectItem>
-                                                        <SelectItem value="2">Week 2 (Nov 10-16)</SelectItem>
-                                                        <SelectItem value="3">Week 3 (Nov 17-23)</SelectItem>
-                                                        <SelectItem value="4">Week 4 (Nov 24-30)</SelectItem>
-                                                        <SelectItem value="5">Week 5 (Dec 1-7)</SelectItem>
-                                                        <SelectItem value="6">Week 6 (Dec 8-14)</SelectItem>
-                                                        <SelectItem value="7">Week 7 (Dec 15-21)</SelectItem>
-                                                        <SelectItem value="8">Week 8 (Dec 22-28)</SelectItem>
+                                                        <SelectItem value="1">Week 1 (Sep 1-7)</SelectItem>
+                                                        <SelectItem value="2">Week 2 (Sep 8-14)</SelectItem>
+                                                        <SelectItem value="3">Week 3 (Sep 15-21)</SelectItem>
+                                                        <SelectItem value="4">Week 4 (Sep 22-28)</SelectItem>
+                                                        <SelectItem value="5">Week 5 (Sep 29-Oct 5)</SelectItem>
+                                                        <SelectItem value="6">Week 6 (Oct 6-12)</SelectItem>
+                                                        <SelectItem value="7">Week 7 (Oct 13-19)</SelectItem>
+                                                        <SelectItem value="8">Week 8 (Oct 20-26)</SelectItem>
+                                                        <SelectItem value="9">Week 9 (Oct 27-Nov 2)</SelectItem>
+                                                        <SelectItem value="10">Week 10 (Nov 3-9)</SelectItem>
+                                                        <SelectItem value="11">Week 11 (Nov 10-16)</SelectItem>
+                                                        <SelectItem value="12">Week 12 (Nov 17-23)</SelectItem>
+                                                        <SelectItem value="13">Week 13 (Nov 24-30)</SelectItem>
+                                                        <SelectItem value="14">Week 14 (Dec 1-7)</SelectItem>
+                                                        <SelectItem value="15">Week 15 (Dec 8-14)</SelectItem>
+                                                        <SelectItem value="16">Week 16 (Dec 15-21)</SelectItem>
+                                                        <SelectItem value="17">Week 17 (Dec 22-28)</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             )}
@@ -302,6 +322,8 @@ export default function FullRankings({ auth }) {
                                                         <SelectValue placeholder="Select Month" />
                                                     </SelectTrigger>
                                                     <SelectContent>
+                                                        <SelectItem value="9">September 2025</SelectItem>
+                                                        <SelectItem value="10">October 2025</SelectItem>
                                                         <SelectItem value="11">November 2025</SelectItem>
                                                         <SelectItem value="12">December 2025</SelectItem>
                                                     </SelectContent>

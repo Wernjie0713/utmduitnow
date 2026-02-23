@@ -26,17 +26,17 @@ class TransactionController extends Controller
         $todaySubmissions = $user->getTodaySubmissionCount();
         $maxSubmissions = config('app.max_submissions_per_day', 100);
         $canSubmit = $user->canSubmitToday();
-        
-        // Check if we're in Week 3 extended submission period
-        $isExtendedPeriod = CompetitionWeekHelper::isInWeek3ExtendedSubmissionPeriod();
+
+        // Check if we're in Week 12 extended submission period
+        $isExtendedPeriod = CompetitionWeekHelper::isInWeek12ExtendedSubmissionPeriod();
 
         return Inertia::render('Transactions/Submit', [
             'todaySubmissions' => $todaySubmissions,
             'maxSubmissions' => $maxSubmissions,
             'canSubmit' => $canSubmit,
             'isExtendedPeriod' => $isExtendedPeriod,
-            'extendedSubmissionEnd' => $isExtendedPeriod 
-                ? CompetitionWeekHelper::getWeek3ExtendedSubmissionEndString() 
+            'extendedSubmissionEnd' => $isExtendedPeriod
+                ? CompetitionWeekHelper::getWeek12ExtendedSubmissionEndString()
                 : null,
         ]);
     }
@@ -66,7 +66,7 @@ class TransactionController extends Controller
         // Check if this is a confirmed submission with preview data
         if ($request->has('preview_data')) {
             $previewData = $request->input('preview_data');
-            
+
             try {
                 $transaction = $this->verificationService->submitVerifiedData(
                     $previewData,
@@ -104,36 +104,31 @@ class TransactionController extends Controller
      */
     public function myTransactions(Request $request)
     {
-        $query = Transaction::where('user_id', auth()->id())
-            // Exclude October data
-            ->where(function($q) {
-                $q->whereMonth('transaction_date', '!=', 10)
-                  ->orWhereNull('transaction_date');
-            });
-        
+        $query = Transaction::where('user_id', auth()->id());
+
         // Global search (Reference ID and Amount)
         if ($request->has('search') && $request->search) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('reference_id', 'like', "%{$search}%")
-                  ->orWhere('amount', 'like', "%{$search}%");
+                    ->orWhere('amount', 'like', "%{$search}%");
             });
         }
-        
+
         // Sorting
         $sortBy = $request->input('sort_by', 'created_at');
         $sortOrder = $request->input('sort_order', 'desc');
         $query->orderBy($sortBy, $sortOrder);
-        
+
         // Pagination with customizable per_page
         $perPage = $request->input('per_page', 10);
         $perPage = in_array($perPage, [10, 20, 30, 50, 100]) ? $perPage : 10;
-        
+
         $transactions = $query->paginate($perPage)->withQueryString();
-        
-        // Check if we're in Week 3 extended submission period
-        $isExtendedPeriod = \App\Helpers\CompetitionWeekHelper::isInWeek3ExtendedSubmissionPeriod();
-        
+
+        // Check if we're in Week 12 extended submission period
+        $isExtendedPeriod = \App\Helpers\CompetitionWeekHelper::isInWeek12ExtendedSubmissionPeriod();
+
         return Inertia::render('Transactions/Index', [
             'transactions' => $transactions,
             'filters' => [
@@ -143,8 +138,8 @@ class TransactionController extends Controller
                 'sort_order' => $sortOrder,
             ],
             'isExtendedPeriod' => $isExtendedPeriod,
-            'extendedSubmissionEnd' => $isExtendedPeriod 
-                ? \App\Helpers\CompetitionWeekHelper::getWeek3ExtendedSubmissionEndString() 
+            'extendedSubmissionEnd' => $isExtendedPeriod
+                ? \App\Helpers\CompetitionWeekHelper::getWeek12ExtendedSubmissionEndString()
                 : null,
         ]);
     }

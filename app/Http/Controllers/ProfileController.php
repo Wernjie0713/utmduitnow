@@ -26,7 +26,7 @@ class ProfileController extends Controller
     {
         $faculties = Faculty::all();
         $user = $request->user();
-        
+
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $user instanceof MustVerifyEmail,
             'status' => session('status'),
@@ -48,10 +48,10 @@ class ProfileController extends Controller
             return false;
         }
 
-        // Only show to users created on or before Nov 1, 2025
-        // New users after Nov 1 don't need to see this announcement
-        $announcementCutoffDate = Carbon::parse('2025-11-01 23:59:59', 'Asia/Kuala_Lumpur');
-        
+        // Only show to users created on or before Sep 1, 2025
+        // New users after Sep 1 don't need to see this announcement
+        $announcementCutoffDate = Carbon::parse('2025-09-01 23:59:59', 'Asia/Kuala_Lumpur');
+
         return $user->created_at->lte($announcementCutoffDate);
     }
 
@@ -158,17 +158,17 @@ class ProfileController extends Controller
         }
 
         $user = $request->user();
-        
+
         Log::info('Updating student information', [
             'user_id' => $user->id,
             'validated_data' => array_diff_key($validated, ['password' => '', 'password_confirmation' => ''])
         ]);
-        
+
         $user->update($validated);
-        
+
         // Refresh user to get updated values
         $user->refresh();
-        
+
         Log::info('User data after update', [
             'user_id' => $user->id,
             'phone_number' => $user->phone_number,
@@ -179,7 +179,7 @@ class ProfileController extends Controller
             'password' => $user->password ? 'set' : 'null',
             'profile_completed' => $user->profile_completed
         ]);
-        
+
         // Check if profile is now complete
         $needsCompletion = $user->needsProfileCompletion();
         Log::info('Profile completion check', [
@@ -187,7 +187,7 @@ class ProfileController extends Controller
             'needs_completion' => $needsCompletion,
             'profile_completed_before' => $user->profile_completed
         ]);
-        
+
         if (!$needsCompletion) {
             $user->update(['profile_completed' => true]);
             $user->refresh();
@@ -225,7 +225,7 @@ class ProfileController extends Controller
         $request->user()->update([
             'password' => Hash::make($validated['password']),
         ]);
-        
+
         // Check if profile is now complete
         if (!$request->user()->needsProfileCompletion()) {
             $request->user()->update(['profile_completed' => true]);

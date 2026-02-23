@@ -142,10 +142,9 @@ class TransactionVerificationService
                 'rejection_reason' => null,
                 'ocr_text' => $ocrText,
             ];
-            
         } catch (Exception $e) {
             Log::error('Transaction preview failed: ' . $e->getMessage());
-            
+
             // Provide specific error messages based on error type
             if (str_contains($e->getMessage(), 'reference_id')) {
                 $rejectionReason = 'Could not extract Reference ID from receipt. Please ensure the receipt is clear and complete, or try uploading a different image.';
@@ -154,7 +153,7 @@ class TransactionVerificationService
             } else {
                 $rejectionReason = 'Unable to process the receipt. Please ensure the image is clear and contains all transaction details, then try again.';
             }
-            
+
             return [
                 'valid' => false,
                 'data' => null,
@@ -176,7 +175,7 @@ class TransactionVerificationService
     public function submitVerifiedData($previewData, $userId)
     {
         DB::beginTransaction();
-        
+
         try {
             // Create approved transaction
             $now = DateHelper::now();
@@ -198,11 +197,10 @@ class TransactionVerificationService
             $this->incrementDailySubmissionCount($userId);
 
             DB::commit();
-            
+
             Log::info("Transaction approved for user {$userId}: {$previewData['data']['reference_id']}");
-            
+
             return $transaction;
-            
         } catch (Exception $e) {
             DB::rollBack();
             Log::error('Transaction submission failed: ' . $e->getMessage());
@@ -220,7 +218,7 @@ class TransactionVerificationService
     public function verify($uploadedFile, $userId)
     {
         DB::beginTransaction();
-        
+
         try {
             $user = User::findOrFail($userId);
 
@@ -289,15 +287,14 @@ class TransactionVerificationService
             $this->incrementDailySubmissionCount($userId);
 
             DB::commit();
-            
+
             Log::info("Transaction approved for user {$userId}: {$parsedData['reference_id']}");
-            
+
             return $transaction;
-            
         } catch (Exception $e) {
             DB::rollBack();
             Log::error('Transaction verification failed: ' . $e->getMessage());
-            
+
             return $this->createRejectedTransaction(
                 $userId,
                 $imagePath ?? null,
@@ -316,11 +313,11 @@ class TransactionVerificationService
     protected function saveImage($file, $userId)
     {
         $filename = 'receipt_' . $userId . '_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-        
+
         // Store in receipts directory using the local disk
         // This will save to storage/app/receipts/
         $path = $file->storeAs('receipts', $filename);
-        
+
         return $path;
     }
 
@@ -368,7 +365,7 @@ class TransactionVerificationService
             if ($boundaries === null) {
                 return [
                     'valid' => false,
-                    'reason' => 'The competition has not started yet. Competition starts on November 1, 2025.'
+                    'reason' => 'The competition has not started yet. Competition starts on September 1, 2025.'
                 ];
             }
 
@@ -379,14 +376,14 @@ class TransactionVerificationService
                 return ['valid' => true, 'reason' => null];
             }
 
-            // Special case: Week 3 extended submission period (Nov 24-26, 2025)
-            // Allow Week 3 transactions (Nov 17-23) to be submitted during this period
-            if (\App\Helpers\CompetitionWeekHelper::isInWeek3ExtendedSubmissionPeriod($now)) {
-                if (\App\Helpers\CompetitionWeekHelper::isValidForWeek3ExtendedSubmission($transactionDate, $now)) {
-                    $extendedEndString = \App\Helpers\CompetitionWeekHelper::getWeek3ExtendedSubmissionEndString();
+            // Special case: Week 12 extended submission period (Nov 24-26, 2025)
+            // Allow Week 12 transactions (Nov 17-23) to be submitted during this period
+            if (\App\Helpers\CompetitionWeekHelper::isInWeek12ExtendedSubmissionPeriod($now)) {
+                if (\App\Helpers\CompetitionWeekHelper::isValidForWeek12ExtendedSubmission($transactionDate, $now)) {
+                    $extendedEndString = \App\Helpers\CompetitionWeekHelper::getWeek12ExtendedSubmissionEndString();
                     return [
                         'valid' => true,
-                        'reason' => 'Week 3 extended submission period. Submissions accepted until ' . $extendedEndString . '.'
+                        'reason' => 'Week 12 extended submission period. Submissions accepted until ' . $extendedEndString . '.'
                     ];
                 }
             }
@@ -397,7 +394,6 @@ class TransactionVerificationService
                 'valid' => false,
                 'reason' => 'Only receipts from the current competition week are accepted. ' . $weekRangeString . '.'
             ];
-            
         } catch (Exception $e) {
             return [
                 'valid' => false,
@@ -420,7 +416,7 @@ class TransactionVerificationService
 
         try {
             $exif = @exif_read_data($imagePath);
-            
+
             if ($exif === false) {
                 // No EXIF data - could be stripped, which is suspicious
                 Log::warning('No EXIF data in image: ' . $imagePath);
@@ -430,7 +426,7 @@ class TransactionVerificationService
 
             // Check for editing software
             $suspiciousSoftware = ['photoshop', 'gimp', 'paint', 'pixlr', 'canva', 'editor'];
-            
+
             if (isset($exif['Software'])) {
                 $software = strtolower($exif['Software']);
                 foreach ($suspiciousSoftware as $editor) {
@@ -444,7 +440,6 @@ class TransactionVerificationService
             }
 
             return ['passed' => true, 'reason' => null];
-            
         } catch (Exception $e) {
             return ['passed' => true, 'reason' => null];
         }
@@ -459,12 +454,12 @@ class TransactionVerificationService
     protected function checkImageHash($imagePath)
     {
         $hash = md5_file($imagePath);
-        
+
         // Check if this exact image file has been submitted before
         $duplicate = DB::table('transactions')
             ->whereRaw("parsed_data->>'image_hash' = ?", [$hash])
             ->exists();
-        
+
         if ($duplicate) {
             return [
                 'passed' => false,
@@ -488,7 +483,7 @@ class TransactionVerificationService
     protected function checkFileIntegrity($imagePath)
     {
         $imageInfo = @getimagesize($imagePath);
-        
+
         if ($imageInfo === false) {
             return [
                 'passed' => false,
@@ -538,9 +533,9 @@ class TransactionVerificationService
         $this->incrementDailySubmissionCount($userId);
 
         DB::commit();
-        
+
         Log::info("Transaction rejected for user {$userId}: {$reason}");
-        
+
         return $transaction;
     }
 
@@ -552,7 +547,7 @@ class TransactionVerificationService
     protected function incrementDailySubmissionCount($userId)
     {
         $today = DateHelper::today();
-        
+
         DB::table('daily_submission_limits')->updateOrInsert(
             [
                 'user_id' => $userId,
@@ -571,4 +566,3 @@ class TransactionVerificationService
         );
     }
 }
-
