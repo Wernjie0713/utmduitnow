@@ -50,14 +50,26 @@ class AdminDashboardController extends Controller
         });
 
         // Get leaderboard data
-        $weeklyLeaderboard = $this->leaderboardService->getWeeklyLeaderboard();
-        $monthlyLeaderboard = $this->leaderboardService->getMonthlyLeaderboard();
-        $allTimeLeaderboard = $this->leaderboardService->getAllTimeLeaderboard();
+        $weeklyLeaderboard = $this->leaderboardService->getWeeklyLeaderboard()->take(20)->values();
+        $weeklyLeaderboard->load('user.faculty');
+        $monthlyLeaderboard = $this->leaderboardService->getMonthlyLeaderboard()->take(20)->values();
+        $monthlyLeaderboard->load('user.faculty');
+        $allTimeLeaderboard = $this->leaderboardService->getAllTimeLeaderboard()->take(20)->values();
+        $allTimeLeaderboard->load('user.faculty');
 
         // Get entrepreneur leaderboard data
-        $entrepreneurWeeklyLeaderboard = $this->entrepreneurLeaderboardService->getWeeklyLeaderboard();
-        $entrepreneurMonthlyLeaderboard = $this->entrepreneurLeaderboardService->getMonthlyLeaderboard();
-        $entrepreneurAllTimeLeaderboard = $this->entrepreneurLeaderboardService->getAllTimeLeaderboard();
+        $entrepreneurWeeklyLeaderboard = $this->entrepreneurLeaderboardService->getWeeklyLeaderboard()->take(20)->values();
+        $entrepreneurWeeklyLeaderboard->load(['entrepreneurUnit' => function ($q) {
+            $q->withCount('teamMembers');
+        }]);
+        $entrepreneurMonthlyLeaderboard = $this->entrepreneurLeaderboardService->getMonthlyLeaderboard()->take(20)->values();
+        $entrepreneurMonthlyLeaderboard->load(['entrepreneurUnit' => function ($q) {
+            $q->withCount('teamMembers');
+        }]);
+        $entrepreneurAllTimeLeaderboard = $this->entrepreneurLeaderboardService->getAllTimeLeaderboard()->take(20)->values();
+        $entrepreneurAllTimeLeaderboard->load(['entrepreneurUnit' => function ($q) {
+            $q->withCount('teamMembers');
+        }]);
 
         $currentWeek = CompetitionWeekHelper::getCurrentWeekNumber() ?? 1;
         $currentMonth = \Carbon\Carbon::now()->month;
@@ -119,11 +131,15 @@ class AdminDashboardController extends Controller
         $mode = $request->input('mode', 'personal');
 
         if ($mode === 'entrepreneur') {
-            $leaderboard = $this->entrepreneurLeaderboardService->getCustomRangeLeaderboard($startDate, $endDate);
+            $leaderboard = $this->entrepreneurLeaderboardService->getCustomRangeLeaderboard($startDate, $endDate)->take(20)->values();
+            $leaderboard->load(['entrepreneurUnit' => function ($q) {
+                $q->withCount('teamMembers');
+            }]);
             $analyticsData = []; // Entrepreneur specific charts can be added here if needed in future
         } else {
             // Get leaderboard for custom range
-            $leaderboard = $this->leaderboardService->getCustomRangeLeaderboard($startDate, $endDate);
+            $leaderboard = $this->leaderboardService->getCustomRangeLeaderboard($startDate, $endDate)->take(20)->values();
+            $leaderboard->load('user.faculty');
 
             // Get analytics data for custom range
             $analyticsData = [
@@ -165,9 +181,13 @@ class AdminDashboardController extends Controller
 
         if ($period === 'weekly') {
             if ($mode === 'entrepreneur') {
-                $leaderboard = $this->entrepreneurLeaderboardService->getWeekLeaderboard($value);
+                $leaderboard = $this->entrepreneurLeaderboardService->getWeekLeaderboard($value)->take(20)->values();
+                $leaderboard->load(['entrepreneurUnit' => function ($q) {
+                    $q->withCount('teamMembers');
+                }]);
             } else {
-                $leaderboard = $this->leaderboardService->getWeekLeaderboard($value);
+                $leaderboard = $this->leaderboardService->getWeekLeaderboard($value)->take(20)->values();
+                $leaderboard->load('user.faculty');
 
                 if ($includeAnalytics) {
                     $dates = CompetitionWeekHelper::getWeekBoundaries($value);
@@ -184,9 +204,13 @@ class AdminDashboardController extends Controller
             }
         } else { // monthly
             if ($mode === 'entrepreneur') {
-                $leaderboard = $this->entrepreneurLeaderboardService->getMonthlyLeaderboard($value, $year);
+                $leaderboard = $this->entrepreneurLeaderboardService->getMonthlyLeaderboard($value, $year)->take(20)->values();
+                $leaderboard->load(['entrepreneurUnit' => function ($q) {
+                    $q->withCount('teamMembers');
+                }]);
             } else {
-                $leaderboard = $this->leaderboardService->getMonthlyLeaderboard($value, $year);
+                $leaderboard = $this->leaderboardService->getMonthlyLeaderboard($value, $year)->take(20)->values();
+                $leaderboard->load('user.faculty');
 
                 if ($includeAnalytics) {
                     $startDate = \Carbon\Carbon::create($year, $value, 1)->startOfMonth()->format('Y-m-d');
@@ -295,7 +319,8 @@ class AdminDashboardController extends Controller
                 fputcsv($file, ['=== WEEKLY LEADERBOARD (Top ' . $limit . ') ===']);
                 fputcsv($file, ['Rank', 'Matric No', 'Name', 'Phone Number', 'Faculty', 'Year', 'Transaction Count']);
 
-                $weeklyLeaderboard = $this->leaderboardService->getWeeklyLeaderboard()->take($limit);
+                $weeklyLeaderboard = $this->leaderboardService->getWeeklyLeaderboard()->take($limit)->values();
+                $weeklyLeaderboard->load('user.faculty');
                 foreach ($weeklyLeaderboard as $entry) {
                     fputcsv($file, [
                         $entry->rank,
@@ -314,7 +339,8 @@ class AdminDashboardController extends Controller
                 fputcsv($file, ['=== MONTHLY LEADERBOARD (Top ' . $limit . ') ===']);
                 fputcsv($file, ['Rank', 'Matric No', 'Name', 'Phone Number', 'Faculty', 'Year', 'Transaction Count']);
 
-                $monthlyLeaderboard = $this->leaderboardService->getMonthlyLeaderboard()->take($limit);
+                $monthlyLeaderboard = $this->leaderboardService->getMonthlyLeaderboard()->take($limit)->values();
+                $monthlyLeaderboard->load('user.faculty');
                 foreach ($monthlyLeaderboard as $entry) {
                     fputcsv($file, [
                         $entry->rank,
@@ -333,7 +359,8 @@ class AdminDashboardController extends Controller
                 fputcsv($file, ['=== ALL-TIME LEADERBOARD (Top ' . $limit . ') ===']);
                 fputcsv($file, ['Rank', 'Matric No', 'Name', 'Phone Number', 'Faculty', 'Year', 'Transaction Count']);
 
-                $allTimeLeaderboard = $this->leaderboardService->getAllTimeLeaderboard()->take($limit);
+                $allTimeLeaderboard = $this->leaderboardService->getAllTimeLeaderboard()->take($limit)->values();
+                $allTimeLeaderboard->load('user.faculty');
                 foreach ($allTimeLeaderboard as $entry) {
                     fputcsv($file, [
                         $entry->rank,
@@ -358,9 +385,10 @@ class AdminDashboardController extends Controller
             };
 
             // Limit to top N entries
-            $leaderboard = $leaderboard->take($limit);
+            $leaderboard = $leaderboard->take($limit)->values();
+            $leaderboard->load('user.faculty');
 
-            $callback = function () use ($leaderboard) {
+            $callback = function () use ($period, $leaderboard) {
                 $file = fopen('php://output', 'w');
 
                 // Add CSV headers

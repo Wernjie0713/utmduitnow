@@ -57,10 +57,7 @@ class EntrepreneurLeaderboardService
             . ':' . ($endDate ? $endDate->toDateTimeString() : 'null');
 
         return Cache::remember($cacheKey, now()->addHours(2), function () use ($startDate, $endDate) {
-            $query = EntrepreneurTransaction::query()
-                ->with(['entrepreneurUnit' => function ($query) {
-                    $query->withCount('teamMembers');
-                }]);
+            $query = EntrepreneurTransaction::query();
 
             if ($startDate && $endDate) {
                 $query->whereBetween('transaction_date', [
@@ -137,7 +134,16 @@ class EntrepreneurLeaderboardService
         };
 
         $top20 = $leaderboard->take(20);
+        $top20->load(['entrepreneurUnit' => function ($query) {
+            $query->withCount('teamMembers');
+        }]);
+
         $unitEntry = $leaderboard->firstWhere('entrepreneur_unit_id', $unitId);
+        if ($unitEntry && !$top20->contains('entrepreneur_unit_id', $unitId)) {
+            $unitEntry->load(['entrepreneurUnit' => function ($query) {
+                $query->withCount('teamMembers');
+            }]);
+        }
 
         return [
             'top20' => $top20,

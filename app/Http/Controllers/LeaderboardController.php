@@ -76,7 +76,8 @@ class LeaderboardController extends Controller
      */
     public function weekly()
     {
-        $leaderboard = $this->leaderboardService->getWeeklyLeaderboard();
+        $leaderboard = $this->leaderboardService->getWeeklyLeaderboard()->take(100)->values();
+        $leaderboard->load('user.faculty');
 
         return response()->json([
             'leaderboard' => $leaderboard,
@@ -92,7 +93,8 @@ class LeaderboardController extends Controller
         $month = $request->input('month', now()->month);
         $year = $request->input('year', now()->year);
 
-        $leaderboard = $this->leaderboardService->getMonthlyLeaderboard($month, $year);
+        $leaderboard = $this->leaderboardService->getMonthlyLeaderboard($month, $year)->take(100)->values();
+        $leaderboard->load('user.faculty');
 
         return response()->json([
             'leaderboard' => $leaderboard,
@@ -108,7 +110,9 @@ class LeaderboardController extends Controller
     public function allTime()
     {
         $isAdmin = Auth::user()->roles->contains('name', 'admin');
-        $leaderboard = $this->leaderboardService->getAllTimeLeaderboard($isAdmin);
+
+        $leaderboard = $this->leaderboardService->getAllTimeLeaderboard($isAdmin)->take(100)->values();
+        $leaderboard->load('user.faculty');
 
         return response()->json([
             'leaderboard' => $leaderboard,

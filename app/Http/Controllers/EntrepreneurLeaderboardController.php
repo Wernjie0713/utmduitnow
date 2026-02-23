@@ -93,6 +93,10 @@ class EntrepreneurLeaderboardController extends Controller
                 fputcsv($file, ['Rank', 'Business Name', 'Business Type', 'Manager Name', 'Team Members Count', 'Transaction Count', 'Total Amount']);
 
                 $weeklyLeaderboard = $this->leaderboardService->getWeeklyLeaderboard();
+                $weeklyLeaderboard->load(['entrepreneurUnit' => function ($q) {
+                    $q->with('manager')->withCount('teamMembers');
+                }]);
+
                 foreach ($weeklyLeaderboard as $entry) {
                     $unit = $entry->entrepreneurUnit;
                     fputcsv($file, [
@@ -100,7 +104,7 @@ class EntrepreneurLeaderboardController extends Controller
                         $unit->business_name ?? 'N/A',
                         ucfirst($unit->business_location ?? 'N/A'),
                         $unit->manager->name ?? 'N/A',
-                        $unit->teamMembers()->count(),
+                        $unit->team_members_count ?? 0,
                         $entry->transaction_count,
                         number_format($entry->total_amount, 2),
                     ]);
@@ -113,6 +117,10 @@ class EntrepreneurLeaderboardController extends Controller
                 fputcsv($file, ['Rank', 'Business Name', 'Business Type', 'Manager Name', 'Team Members Count', 'Transaction Count', 'Total Amount']);
 
                 $monthlyLeaderboard = $this->leaderboardService->getMonthlyLeaderboard();
+                $monthlyLeaderboard->load(['entrepreneurUnit' => function ($q) {
+                    $q->with('manager')->withCount('teamMembers');
+                }]);
+
                 foreach ($monthlyLeaderboard as $entry) {
                     $unit = $entry->entrepreneurUnit;
                     fputcsv($file, [
@@ -120,7 +128,7 @@ class EntrepreneurLeaderboardController extends Controller
                         $unit->business_name ?? 'N/A',
                         ucfirst($unit->business_location ?? 'N/A'),
                         $unit->manager->name ?? 'N/A',
-                        $unit->teamMembers()->count(),
+                        $unit->team_members_count ?? 0,
                         $entry->transaction_count,
                         number_format($entry->total_amount, 2),
                     ]);
@@ -133,6 +141,10 @@ class EntrepreneurLeaderboardController extends Controller
                 fputcsv($file, ['Rank', 'Business Name', 'Business Type', 'Manager Name', 'Team Members Count', 'Transaction Count', 'Total Amount']);
 
                 $allTimeLeaderboard = $this->leaderboardService->getAllTimeLeaderboard();
+                $allTimeLeaderboard->load(['entrepreneurUnit' => function ($q) {
+                    $q->with('manager')->withCount('teamMembers');
+                }]);
+
                 foreach ($allTimeLeaderboard as $entry) {
                     $unit = $entry->entrepreneurUnit;
                     fputcsv($file, [
@@ -140,7 +152,7 @@ class EntrepreneurLeaderboardController extends Controller
                         $unit->business_name ?? 'N/A',
                         ucfirst($unit->business_location ?? 'N/A'),
                         $unit->manager->name ?? 'N/A',
-                        $unit->teamMembers()->count(),
+                        $unit->team_members_count ?? 0,
                         $entry->transaction_count,
                         number_format($entry->total_amount, 2),
                     ]);
@@ -168,6 +180,9 @@ class EntrepreneurLeaderboardController extends Controller
                     'all_time' => $this->leaderboardService->getAllTimeLeaderboard(),
                     default => collect([]),
                 };
+                $leaderboard->load(['entrepreneurUnit' => function ($q) {
+                    $q->with('manager')->withCount('teamMembers');
+                }]);
 
                 foreach ($leaderboard as $entry) {
                     $unit = $entry->entrepreneurUnit;
@@ -176,7 +191,7 @@ class EntrepreneurLeaderboardController extends Controller
                         $unit->business_name ?? 'N/A',
                         ucfirst($unit->business_location ?? 'N/A'),
                         $unit->manager->name ?? 'N/A',
-                        $unit->teamMembers()->count(),
+                        $unit->team_members_count ?? 0,
                         $entry->transaction_count,
                         number_format($entry->total_amount, 2),
                     ]);

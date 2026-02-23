@@ -109,7 +109,6 @@ class LeaderboardService
         return Cache::remember($cacheKey, now()->addHours(2), function () use ($startDate, $endDate) {
             $query = Transaction::query()
                 ->where('status', 'approved')
-                ->with(['user.faculty'])
                 ->whereHas('user', function ($q) {
                     $q->where('is_suspicious', false);
                 });
