@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(php artisan tinker:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(/c/laragon/bin/mysql/mysql-8.0.30-winx64/bin/mysql.exe -u root utmduitnow -e:*)"
     ]
   }
 }

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Transaction;
 use App\Helpers\CompetitionWeekHelper;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class LeaderboardService
@@ -101,53 +102,53 @@ class LeaderboardService
      */
     protected function getLeaderboard($periodType, $startDate = null, $endDate = null)
     {
-        $query = Transaction::query()
-            ->where('status', 'approved')
-            ->with(['user.faculty'])
-            ->whereHas('user', function ($q) {
-                // Exclude suspicious users from leaderboards
-                $q->where('is_suspicious', false);
-            });
+        $cacheKey = 'leaderboard:' . $periodType
+            . ':' . ($startDate ? $startDate->toDateTimeString() : 'null')
+            . ':' . ($endDate ? $endDate->toDateTimeString() : 'null');
 
-        // Apply date filter if provided
-        if ($startDate && $endDate) {
-            $query->whereBetween('approved_at', [$startDate, $endDate]);
-        } elseif ($startDate) {
-            // Only start date provided (for all-time from specific date onwards)
-            $query->where('approved_at', '>=', $startDate);
-        }
+        return Cache::remember($cacheKey, now()->addHours(2), function () use ($startDate, $endDate) {
+            $query = Transaction::query()
+                ->where('status', 'approved')
+                ->with(['user.faculty'])
+                ->whereHas('user', function ($q) {
+                    $q->where('is_suspicious', false);
+                });
 
-        // Get transaction counts per user with tie-breaker
-        $leaderboard = $query
-            ->select(
-                'user_id',
-                DB::raw('COUNT(*) as transaction_count'),
-                DB::raw('MIN(approved_at) as first_transaction_at') // For tie-breaking
-            )
-            ->groupBy('user_id')
-            ->orderByDesc('transaction_count')
-            ->orderBy('first_transaction_at', 'asc') // Tie-breaker: earlier timestamp wins
-            ->get();
-
-        // Add rank to each entry
-        $rank = 1;
-        $previousCount = null;
-        $previousRank = 1;
-
-        foreach ($leaderboard as $index => $entry) {
-            if ($previousCount === $entry->transaction_count) {
-                // Same count as previous, keep the same rank
-                $entry->rank = $previousRank;
-            } else {
-                $entry->rank = $rank;
-                $previousRank = $rank;
+            if ($startDate && $endDate) {
+                $query->whereBetween('approved_at', [$startDate, $endDate]);
+            } elseif ($startDate) {
+                $query->where('approved_at', '>=', $startDate);
             }
 
-            $previousCount = $entry->transaction_count;
-            $rank++;
-        }
+            $leaderboard = $query
+                ->select(
+                    'user_id',
+                    DB::raw('COUNT(*) as transaction_count'),
+                    DB::raw('MIN(approved_at) as first_transaction_at')
+                )
+                ->groupBy('user_id')
+                ->orderByDesc('transaction_count')
+                ->orderBy('first_transaction_at', 'asc')
+                ->get();
 
-        return $leaderboard;
+            $rank = 1;
+            $previousCount = null;
+            $previousRank = 1;
+
+            foreach ($leaderboard as $index => $entry) {
+                if ($previousCount === $entry->transaction_count) {
+                    $entry->rank = $previousRank;
+                } else {
+                    $entry->rank = $rank;
+                    $previousRank = $rank;
+                }
+
+                $previousCount = $entry->transaction_count;
+                $rank++;
+            }
+
+            return $leaderboard;
+        });
     }
 
     /**
@@ -157,23 +158,25 @@ class LeaderboardService
      */
     public function getAvailableMonths()
     {
-        $months = Transaction::where('status', 'approved')
-            ->select(
-                DB::raw('EXTRACT(YEAR FROM approved_at) as year'),
-                DB::raw('EXTRACT(MONTH FROM approved_at) as month')
-            )
-            ->groupBy('year', 'month')
-            ->orderByDesc('year')
-            ->orderByDesc('month')
-            ->get();
+        return Cache::remember('leaderboard:available_months', now()->addHours(2), function () {
+            $months = Transaction::where('status', 'approved')
+                ->select(
+                    DB::raw('EXTRACT(YEAR FROM approved_at) as year'),
+                    DB::raw('EXTRACT(MONTH FROM approved_at) as month')
+                )
+                ->groupBy('year', 'month')
+                ->orderByDesc('year')
+                ->orderByDesc('month')
+                ->get();
 
-        return $months->map(function ($item) {
-            return [
-                'year' => (int) $item->year,
-                'month' => (int) $item->month,
-                'label' => Carbon::create($item->year, $item->month, 1)->format('F Y'),
-            ];
-        })->toArray();
+            return $months->map(function ($item) {
+                return [
+                    'year' => (int) $item->year,
+                    'month' => (int) $item->month,
+                    'label' => Carbon::create($item->year, $item->month, 1)->format('F Y'),
+                ];
+            })->toArray();
+        });
     }
 
     /**

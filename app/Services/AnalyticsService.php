@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Transaction;
 use App\Models\Faculty;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -18,44 +19,42 @@ class AnalyticsService
      */
     public function getTransactionTrends($period)
     {
-        $query = Transaction::selectRaw('DATE(created_at) as date, COUNT(*) as count, SUM(amount) as amount')
-            ->where('status', 'approved')
-            ->groupBy('date')
-            ->orderBy('date');
-
-        if ($period === 'weekly') {
-            // Last 7 days
-            $query->where('created_at', '>=', now()->subDays(7));
-        } elseif ($period === 'monthly') {
-            // Last 30 days
-            $query->where('created_at', '>=', now()->subDays(30));
-        } else {
-            // All time - group by month for last 12 months
-            $query = Transaction::selectRaw("DATE_FORMAT(created_at, '%Y-%m-01') as date, COUNT(*) as count, SUM(amount) as amount")
+        return Cache::remember("analytics:trends:{$period}", now()->addHours(2), function () use ($period) {
+            $query = Transaction::selectRaw('DATE(created_at) as date, COUNT(*) as count, SUM(amount) as amount')
                 ->where('status', 'approved')
-                ->where('created_at', '>=', now()->subMonths(12))
                 ->groupBy('date')
                 ->orderBy('date');
-        }
 
-        $results = $query->get();
+            if ($period === 'weekly') {
+                $query->where('created_at', '>=', now()->subDays(7));
+            } elseif ($period === 'monthly') {
+                $query->where('created_at', '>=', now()->subDays(30));
+            } else {
+                $query = Transaction::selectRaw("DATE_FORMAT(created_at, '%Y-%m-01') as date, COUNT(*) as count, SUM(amount) as amount")
+                    ->where('status', 'approved')
+                    ->where('created_at', '>=', now()->subMonths(12))
+                    ->groupBy('date')
+                    ->orderBy('date');
+            }
 
-        // Fill in missing dates with zero values
-        if ($period === 'weekly') {
-            $results = $this->fillMissingDates($results, 7, 'days');
-        } elseif ($period === 'monthly') {
-            $results = $this->fillMissingDates($results, 30, 'days');
-        } else {
-            $results = $this->fillMissingDates($results, 12, 'months');
-        }
+            $results = $query->get();
 
-        return $results->map(function ($item) {
-            return [
-                'date' => $item['date'],
-                'count' => (int) $item['count'],
-                'amount' => (float) $item['amount'],
-            ];
-        })->values()->toArray();
+            if ($period === 'weekly') {
+                $results = $this->fillMissingDates($results, 7, 'days');
+            } elseif ($period === 'monthly') {
+                $results = $this->fillMissingDates($results, 30, 'days');
+            } else {
+                $results = $this->fillMissingDates($results, 12, 'months');
+            }
+
+            return $results->map(function ($item) {
+                return [
+                    'date' => $item['date'],
+                    'count' => (int) $item['count'],
+                    'amount' => (float) $item['amount'],
+                ];
+            })->values()->toArray();
+        });
     }
 
     /**
@@ -95,34 +94,36 @@ class AnalyticsService
      */
     public function getFacultyComparison($period)
     {
-        $dateFilter = $this->getDateFilter($period);
+        return Cache::remember("analytics:faculty:{$period}", now()->addHours(2), function () use ($period) {
+            $dateFilter = $this->getDateFilter($period);
 
-        $faculties = Faculty::withCount([
-            'users as student_count'
-        ])->get();
+            $faculties = Faculty::withCount([
+                'users as student_count'
+            ])->get();
 
-        $transactionCounts = Transaction::selectRaw('users.faculty_id, COUNT(*) as transaction_count')
-            ->join('users', 'transactions.user_id', '=', 'users.id')
-            ->where('transactions.status', 'approved')
-            ->when($dateFilter, function ($query) use ($dateFilter) {
-                return $query->where('transactions.created_at', '>=', $dateFilter);
-            })
-            ->groupBy('users.faculty_id')
-            ->pluck('transaction_count', 'faculty_id');
+            $transactionCounts = Transaction::selectRaw('users.faculty_id, COUNT(*) as transaction_count')
+                ->join('users', 'transactions.user_id', '=', 'users.id')
+                ->where('transactions.status', 'approved')
+                ->when($dateFilter, function ($query) use ($dateFilter) {
+                    return $query->where('transactions.created_at', '>=', $dateFilter);
+                })
+                ->groupBy('users.faculty_id')
+                ->pluck('transaction_count', 'faculty_id');
 
-        return $faculties->map(function ($faculty) use ($transactionCounts) {
-            $count = $transactionCounts->get($faculty->id, 0);
-            $students = $faculty->student_count;
-            $average = $students > 0 ? round($count / $students, 1) : 0;
+            return $faculties->map(function ($faculty) use ($transactionCounts) {
+                $count = $transactionCounts->get($faculty->id, 0);
+                $students = $faculty->student_count;
+                $average = $students > 0 ? round($count / $students, 1) : 0;
 
-            return [
-                'faculty' => $faculty->short_name,
-                'name' => $faculty->name,
-                'count' => (int) $count,
-                'students' => (int) $students,
-                'average' => (float) $average,
-            ];
-        })->sortByDesc('count')->values()->toArray();
+                return [
+                    'faculty' => $faculty->short_name,
+                    'name' => $faculty->name,
+                    'count' => (int) $count,
+                    'students' => (int) $students,
+                    'average' => (float) $average,
+                ];
+            })->sortByDesc('count')->values()->toArray();
+        });
     }
 
     /**
@@ -132,16 +133,18 @@ class AnalyticsService
      */
     public function getStatusDistribution()
     {
-        $statusCounts = Transaction::selectRaw('status, COUNT(*) as count')
-            ->groupBy('status')
-            ->pluck('count', 'status');
+        return Cache::remember('analytics:status', now()->addHours(2), function () {
+            $statusCounts = Transaction::selectRaw('status, COUNT(*) as count')
+                ->groupBy('status')
+                ->pluck('count', 'status');
 
-        return [
-            'approved' => (int) $statusCounts->get('approved', 0),
-            'pending' => (int) $statusCounts->get('pending', 0),
-            'rejected' => (int) $statusCounts->get('rejected', 0),
-            'total' => (int) $statusCounts->sum(),
-        ];
+            return [
+                'approved' => (int) $statusCounts->get('approved', 0),
+                'pending' => (int) $statusCounts->get('pending', 0),
+                'rejected' => (int) $statusCounts->get('rejected', 0),
+                'total' => (int) $statusCounts->sum(),
+            ];
+        });
     }
 
     /**
@@ -152,44 +155,46 @@ class AnalyticsService
      */
     public function getYearParticipation($period)
     {
-        $dateFilter = $this->getDateFilter($period);
+        return Cache::remember("analytics:years:{$period}", now()->addHours(2), function () use ($period) {
+            $dateFilter = $this->getDateFilter($period);
 
-        $years = [1, 2, 3, 4];
-        $result = [];
-
-        foreach ($years as $year) {
+            // Single query for total students per year
             $totalStudents = User::whereHas('roles', function ($q) {
                 $q->where('name', 'student');
-            })->where('year_of_study', $year)->count();
+            })
+                ->selectRaw('year_of_study, COUNT(*) as total')
+                ->groupBy('year_of_study')
+                ->pluck('total', 'year_of_study');
 
-            $transactionCount = Transaction::join('users', 'transactions.user_id', '=', 'users.id')
-                ->where('users.year_of_study', $year)
+            // Rebuild the stats using the single-query approach
+            $yearStatsRaw = Transaction::join('users', 'transactions.user_id', '=', 'users.id')
                 ->where('transactions.status', 'approved')
                 ->when($dateFilter, function ($query) use ($dateFilter) {
                     return $query->where('transactions.created_at', '>=', $dateFilter);
                 })
-                ->count();
+                ->selectRaw('users.year_of_study, COUNT(*) as transaction_count, COUNT(DISTINCT users.id) as active_students')
+                ->groupBy('users.year_of_study')
+                ->get()
+                ->keyBy('year_of_study');
 
-            $activeStudents = Transaction::join('users', 'transactions.user_id', '=', 'users.id')
-                ->where('users.year_of_study', $year)
-                ->where('transactions.status', 'approved')
-                ->when($dateFilter, function ($query) use ($dateFilter) {
-                    return $query->where('transactions.created_at', '>=', $dateFilter);
-                })
-                ->distinct('users.id')
-                ->count('users.id');
+            $result = [];
+            foreach ([1, 2, 3, 4] as $year) {
+                $stats = $yearStatsRaw->get($year);
+                $total = $totalStudents->get($year, 0);
+                $active = $stats ? (int) $stats->active_students : 0;
+                $txnCount = $stats ? (int) $stats->transaction_count : 0;
+                $rate = $total > 0 ? $active / $total : 0;
 
-            $rate = $totalStudents > 0 ? $activeStudents / $totalStudents : 0;
+                $result[] = [
+                    'year' => $year,
+                    'count' => $txnCount,
+                    'students' => (int) $total,
+                    'rate' => (float) round($rate, 2),
+                ];
+            }
 
-            $result[] = [
-                'year' => $year,
-                'count' => (int) $transactionCount,
-                'students' => (int) $totalStudents,
-                'rate' => (float) round($rate, 2),
-            ];
-        }
-
-        return $result;
+            return $result;
+        });
     }
 
     /**
@@ -218,51 +223,51 @@ class AnalyticsService
      */
     public function getTransactionTrendsCustom($startDate, $endDate)
     {
-        $start = Carbon::parse($startDate)->startOfDay();
-        $end = Carbon::parse($endDate)->endOfDay();
-        $daysDiff = $start->diffInDays($end);
+        $cacheKey = "analytics:trends_custom:{$startDate}:{$endDate}";
 
-        // Determine grouping based on range length
-        if ($daysDiff <= 31) {
-            // Daily grouping for <= 31 days (within 1 month)
-            $query = Transaction::selectRaw('DATE(created_at) as date, COUNT(*) as count, SUM(amount) as amount')
-                ->where('status', 'approved')
-                ->whereBetween('created_at', [$start, $end])
-                ->groupBy('date')
-                ->orderBy('date');
-            
-            $results = $query->get();
-            $results = $this->fillMissingDatesCustom($results, $start, $end, 'days');
-        } elseif ($daysDiff <= 90) {
-            // Weekly grouping for 32-90 days (across months but < 3 months)
-            // Group by week, using Monday as the start of the week
-            $query = Transaction::selectRaw("DATE(DATE_SUB(created_at, INTERVAL WEEKDAY(created_at) DAY)) as date, COUNT(*) as count, SUM(amount) as amount")
-                ->where('status', 'approved')
-                ->whereBetween('created_at', [$start, $end])
-                ->groupBy('date')
-                ->orderBy('date');
-            
-            $results = $query->get();
-            $results = $this->fillMissingDatesCustom($results, $start, $end, 'weeks');
-        } else {
-            // Monthly grouping for > 90 days (3+ months)
-            $query = Transaction::selectRaw("DATE_FORMAT(created_at, '%Y-%m-01') as date, COUNT(*) as count, SUM(amount) as amount")
-                ->where('status', 'approved')
-                ->whereBetween('created_at', [$start, $end])
-                ->groupBy('date')
-                ->orderBy('date');
-            
-            $results = $query->get();
-            $results = $this->fillMissingDatesCustom($results, $start, $end, 'months');
-        }
+        return Cache::remember($cacheKey, now()->addHours(2), function () use ($startDate, $endDate) {
+            $start = Carbon::parse($startDate)->startOfDay();
+            $end = Carbon::parse($endDate)->endOfDay();
+            $daysDiff = $start->diffInDays($end);
 
-        return $results->map(function ($item) {
-            return [
-                'date' => $item['date'],
-                'count' => (int) $item['count'],
-                'amount' => (float) $item['amount'],
-            ];
-        })->values()->toArray();
+            // Determine grouping based on range length
+            if ($daysDiff <= 31) {
+                $query = Transaction::selectRaw('DATE(created_at) as date, COUNT(*) as count, SUM(amount) as amount')
+                    ->where('status', 'approved')
+                    ->whereBetween('created_at', [$start, $end])
+                    ->groupBy('date')
+                    ->orderBy('date');
+
+                $results = $query->get();
+                $results = $this->fillMissingDatesCustom($results, $start, $end, 'days');
+            } elseif ($daysDiff <= 90) {
+                $query = Transaction::selectRaw("DATE(DATE_SUB(created_at, INTERVAL WEEKDAY(created_at) DAY)) as date, COUNT(*) as count, SUM(amount) as amount")
+                    ->where('status', 'approved')
+                    ->whereBetween('created_at', [$start, $end])
+                    ->groupBy('date')
+                    ->orderBy('date');
+
+                $results = $query->get();
+                $results = $this->fillMissingDatesCustom($results, $start, $end, 'weeks');
+            } else {
+                $query = Transaction::selectRaw("DATE_FORMAT(created_at, '%Y-%m-01') as date, COUNT(*) as count, SUM(amount) as amount")
+                    ->where('status', 'approved')
+                    ->whereBetween('created_at', [$start, $end])
+                    ->groupBy('date')
+                    ->orderBy('date');
+
+                $results = $query->get();
+                $results = $this->fillMissingDatesCustom($results, $start, $end, 'months');
+            }
+
+            return $results->map(function ($item) {
+                return [
+                    'date' => $item['date'],
+                    'count' => (int) $item['count'],
+                    'amount' => (float) $item['amount'],
+                ];
+            })->values()->toArray();
+        });
     }
 
     /**
@@ -312,33 +317,37 @@ class AnalyticsService
      */
     public function getFacultyComparisonCustom($startDate, $endDate)
     {
-        $start = Carbon::parse($startDate)->startOfDay();
-        $end = Carbon::parse($endDate)->endOfDay();
+        $cacheKey = "analytics:faculty_custom:{$startDate}:{$endDate}";
 
-        $faculties = Faculty::withCount([
-            'users as student_count'
-        ])->get();
+        return Cache::remember($cacheKey, now()->addHours(2), function () use ($startDate, $endDate) {
+            $start = Carbon::parse($startDate)->startOfDay();
+            $end = Carbon::parse($endDate)->endOfDay();
 
-        $transactionCounts = Transaction::selectRaw('users.faculty_id, COUNT(*) as transaction_count')
-            ->join('users', 'transactions.user_id', '=', 'users.id')
-            ->where('transactions.status', 'approved')
-            ->whereBetween('transactions.created_at', [$start, $end])
-            ->groupBy('users.faculty_id')
-            ->pluck('transaction_count', 'faculty_id');
+            $faculties = Faculty::withCount([
+                'users as student_count'
+            ])->get();
 
-        return $faculties->map(function ($faculty) use ($transactionCounts) {
-            $count = $transactionCounts->get($faculty->id, 0);
-            $students = $faculty->student_count;
-            $average = $students > 0 ? round($count / $students, 1) : 0;
+            $transactionCounts = Transaction::selectRaw('users.faculty_id, COUNT(*) as transaction_count')
+                ->join('users', 'transactions.user_id', '=', 'users.id')
+                ->where('transactions.status', 'approved')
+                ->whereBetween('transactions.created_at', [$start, $end])
+                ->groupBy('users.faculty_id')
+                ->pluck('transaction_count', 'faculty_id');
 
-            return [
-                'faculty' => $faculty->short_name,
-                'name' => $faculty->name,
-                'count' => (int) $count,
-                'students' => (int) $students,
-                'average' => (float) $average,
-            ];
-        })->sortByDesc('count')->values()->toArray();
+            return $faculties->map(function ($faculty) use ($transactionCounts) {
+                $count = $transactionCounts->get($faculty->id, 0);
+                $students = $faculty->student_count;
+                $average = $students > 0 ? round($count / $students, 1) : 0;
+
+                return [
+                    'faculty' => $faculty->short_name,
+                    'name' => $faculty->name,
+                    'count' => (int) $count,
+                    'students' => (int) $students,
+                    'average' => (float) $average,
+                ];
+            })->sortByDesc('count')->values()->toArray();
+        });
     }
 
     /**
@@ -350,41 +359,45 @@ class AnalyticsService
      */
     public function getYearParticipationCustom($startDate, $endDate)
     {
-        $start = Carbon::parse($startDate)->startOfDay();
-        $end = Carbon::parse($endDate)->endOfDay();
+        $cacheKey = "analytics:years_custom:{$startDate}:{$endDate}";
 
-        $years = [1, 2, 3, 4];
-        $result = [];
+        return Cache::remember($cacheKey, now()->addHours(2), function () use ($startDate, $endDate) {
+            $start = Carbon::parse($startDate)->startOfDay();
+            $end = Carbon::parse($endDate)->endOfDay();
 
-        foreach ($years as $year) {
             $totalStudents = User::whereHas('roles', function ($q) {
                 $q->where('name', 'student');
-            })->where('year_of_study', $year)->count();
+            })
+                ->selectRaw('year_of_study, COUNT(*) as total')
+                ->groupBy('year_of_study')
+                ->pluck('total', 'year_of_study');
 
-            $transactionCount = Transaction::join('users', 'transactions.user_id', '=', 'users.id')
-                ->where('users.year_of_study', $year)
+            $yearStatsRaw = Transaction::join('users', 'transactions.user_id', '=', 'users.id')
                 ->where('transactions.status', 'approved')
                 ->whereBetween('transactions.created_at', [$start, $end])
-                ->count();
+                ->selectRaw('users.year_of_study, COUNT(*) as transaction_count, COUNT(DISTINCT users.id) as active_students')
+                ->groupBy('users.year_of_study')
+                ->get()
+                ->keyBy('year_of_study');
 
-            $activeStudents = Transaction::join('users', 'transactions.user_id', '=', 'users.id')
-                ->where('users.year_of_study', $year)
-                ->where('transactions.status', 'approved')
-                ->whereBetween('transactions.created_at', [$start, $end])
-                ->distinct('users.id')
-                ->count('users.id');
+            $result = [];
+            foreach ([1, 2, 3, 4] as $year) {
+                $stats = $yearStatsRaw->get($year);
+                $total = $totalStudents->get($year, 0);
+                $active = $stats ? (int) $stats->active_students : 0;
+                $txnCount = $stats ? (int) $stats->transaction_count : 0;
+                $rate = $total > 0 ? $active / $total : 0;
 
-            $rate = $totalStudents > 0 ? $activeStudents / $totalStudents : 0;
+                $result[] = [
+                    'year' => $year,
+                    'count' => $txnCount,
+                    'students' => (int) $total,
+                    'rate' => (float) round($rate, 2),
+                ];
+            }
 
-            $result[] = [
-                'year' => $year,
-                'count' => (int) $transactionCount,
-                'students' => (int) $totalStudents,
-                'rate' => (float) round($rate, 2),
-            ];
-        }
-
-        return $result;
+            return $result;
+        });
     }
 }
 

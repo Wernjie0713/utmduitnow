@@ -1,9 +1,10 @@
 """
 Synthetic Entrepreneur Transaction Generator
 ============================================
-Learns time/day patterns from real Phase 1 transactions, creates 35 realistic
+Learns time/day patterns from real Phase 1 transactions, creates 70 realistic
 student entrepreneur business units, and generates synthetic transactions
-that look like real DuitNow payment data.
+that look like real DuitNow payment data. Top units get ~1K transactions
+with total amount capped at RM 4K per unit.
 
 Usage:
     pip install -r requirements.txt
@@ -65,17 +66,53 @@ BUSINESSES = [
     ("BobaBros", "online"),
     ("ChocoChurp", "online"),
     ("Snackwave", "online"),
+    # Generated batch 2 (35 more)
+    ("RotiRocket", "online"),
+    ("MeeGorengMojo", "online"),
+    ("PisangPeace", "online"),
+    ("LaksamLove", "online"),
+    ("KeropokKing", "online"),
+    ("AirKatuk", "online"),
+    ("NasiKandaqKrew", "online"),
+    ("MurtabakMagic", "online"),
+    ("PopiahPop", "online"),
+    ("CurryPuffClub", "online"),
+    ("IceBatu", "online"),
+    ("WaffleLab", "online"),
+    ("CrepeCorner", "online"),
+    ("SmoothieSurf", "online"),
+    ("PancakeParty", "online"),
+    ("DonutDash", "online"),
+    ("KayaToast Co", "online"),
+    ("TehTarikTown", "online"),
+    ("ApamBalikBoss", "online"),
+    ("PutuPiring Co", "online"),
+    ("OndehOndeh", "online"),
+    ("KuihLapisLane", "online"),
+    ("CheeseNaan Hub", "online"),
+    ("RajaBeriani", "online"),
+    ("SotoSensation", "online"),
+    ("RendangRush", "online"),
+    ("LemangLounge", "online"),
+    ("KetupakKrew", "online"),
+    ("AyamPercikPal", "online"),
+    ("IkanBakarBay", "online"),
+    ("SambalStation", "online"),
+    ("TempeBites", "online"),
+    ("JellyJoy", "online"),
+    ("FrozenFiesta", "online"),
+    ("SnackSiesta", "online"),
 ]
 
 # Price profile per business type: (min, max, mean, std)
-# Realistic student food/snack business prices: RM3–RM35
+# Lower amounts so ~1K transactions stays under RM 4K total (avg ~RM 3-4/txn)
 PRICE_PROFILES = {
-    "snack":   (3.0,  18.0,  7.0,  3.0),
-    "meal":    (5.0,  25.0, 12.0,  4.5),
-    "drink":   (3.0,  12.0,  5.5,  2.0),
-    "dessert": (4.0,  22.0,  9.0,  4.0),
-    "frozen":  (8.0,  35.0, 18.0,  6.0),
-    "gift":    (5.0,  30.0, 15.0,  7.0),
+    "snack":   (1.0,  6.0,  2.5,  1.0),
+    "meal":    (2.0,  8.0,  4.0,  1.5),
+    "drink":   (1.0,  5.0,  2.0,  0.8),
+    "dessert": (1.5,  7.0,  3.0,  1.2),
+    "frozen":  (2.0, 10.0,  5.0,  2.0),
+    "gift":    (2.0,  8.0,  4.0,  2.0),
 }
 
 BUSINESS_PROFILES = [
@@ -89,6 +126,12 @@ BUSINESS_PROFILES = [
     "frozen", "snack", "snack", "snack", "meal",
     "drink", "drink", "dessert", "dessert", "dessert",
     "snack", "snack",
+    # Generated batch 2 (35 more)
+    "snack", "meal", "snack", "meal", "snack", "drink", "meal", "meal", "snack",
+    "snack", "drink", "dessert", "dessert", "drink", "dessert", "dessert", "snack",
+    "drink", "snack", "dessert", "dessert", "snack", "meal", "meal", "meal",
+    "meal", "snack", "snack", "meal", "meal", "snack", "snack", "dessert",
+    "frozen", "snack",
 ]
 
 # Real hour-of-day counts from Phase 1 (learned from production data)
@@ -212,13 +255,17 @@ def main():
     # ── Step 3: Create entrepreneur units ─────────────────────────────────────
     print(f"\n[3/5] Creating {len(BUSINESSES)} entrepreneur units...")
 
-    # Clear all entrepreneur units and shop users
-    cursor.execute("""
-        DELETE eu FROM entrepreneur_units eu
-        JOIN users u ON eu.manager_id = u.id
-        WHERE u.email LIKE '%@gmail.com' OR u.matric_no LIKE 'GEN%' OR u.email = 'shop@utmduitnow.com'
-    """)
-    cursor.execute("DELETE FROM users WHERE email LIKE '%@gmail.com' OR matric_no LIKE 'GEN%' OR email = 'shop@utmduitnow.com'")
+    # TRUNCATE all entrepreneur tables (IDs restart from 1)
+    cursor.execute("SET FOREIGN_KEY_CHECKS=0")
+    cursor.execute("TRUNCATE TABLE entrepreneur_transactions")
+    cursor.execute("TRUNCATE TABLE entrepreneur_team_members")
+    cursor.execute("TRUNCATE TABLE entrepreneur_duitnow_ids")
+    cursor.execute("TRUNCATE TABLE entrepreneur_units")
+    cursor.execute("SET FOREIGN_KEY_CHECKS=1")
+    conn.commit()
+    # Clean up generated shop users + their assigned_roles
+    cursor.execute("DELETE FROM assigned_roles WHERE entity_id IN (SELECT id FROM users WHERE matric_no LIKE 'GEN%') AND entity_type = 'App\\\\Models\\\\User'")
+    cursor.execute("DELETE FROM users WHERE matric_no LIKE 'GEN%'")
     conn.commit()
 
     unit_ids = []
@@ -274,16 +321,15 @@ def main():
     print(f"  Total units: {len(unit_ids)}")
 
     # ── Step 4: Generate synthetic transactions ───────────────────────────────
-    # Realistic constraints:
-    # - 3 months (Oct–Dec), 5–10 members per group
-    # - Each unit gets 200–2000 total transactions (realistic for student biz)
+    # Constraints:
+    # - Date range from real approved transactions
+    # - 70 units, top 1 ~1K txns, amounts capped at RM 4K per unit
     # - Distributed by real day-of-week weights
-    # - Amounts: RM3–RM35 based on product type
+    # - Amounts: RM1–RM10 based on product type
     # - Reference IDs match real format
     print(f"\n[4/5] Generating synthetic transactions ({date_min} → {date_max})...")
 
-    cursor.execute("DELETE FROM entrepreneur_transactions")
-    conn.commit()
+    # Already truncated in Step 3
 
     # Build list of all dates with their dow index
     day_list = []
@@ -299,21 +345,26 @@ def main():
     all_transactions = []
     used_ref_ids = set()
 
-    # Assign transaction targets with realistic sales amounts
-    # Top 1: ~4000 sales (400-500 txns × RM8-10 avg = RM3200-5000)
-    # Top 2-3: ~3000 sales (300-400 txns × RM8-10 avg = RM2400-4000)
-    # Rest: <3000 sales (50-280 txns × RM8-10 avg = RM400-2800)
+    # Assign transaction targets — more transactions, lower amounts
+    # Top 1: ~1K txns × RM3-4 avg = ~RM3K-4K
+    # Top 2-3: ~600-850 txns
+    # Top 4-10: ~300-550 txns
+    # Rest: 50-280 txns
     targets = []
     for i in range(len(unit_ids)):
         if i == 0:
-            targets.append(random.randint(400, 500))  # Top 1
+            targets.append(random.randint(900, 1100))   # Top 1: ~1K txns
         elif i < 3:
-            targets.append(random.randint(300, 400))  # Top 2-3
+            targets.append(random.randint(600, 850))     # Top 2-3
+        elif i < 10:
+            targets.append(random.randint(300, 550))     # Top 4-10
         else:
-            targets.append(random.randint(50, 280))   # Rest
+            targets.append(random.randint(50, 280))      # Rest
     random.shuffle(targets)  # randomize which units end up on top
 
     for unit_id, profile, total_target in zip(unit_ids, unit_profiles, targets):
+
+        unit_start_idx = len(all_transactions)
 
         # Distribute across days by dow weight
         daily_counts = np.random.multinomial(total_target, day_weights)
@@ -334,6 +385,17 @@ def main():
                     txn_date.strftime('%Y-%m-%d'), txn_time,
                     amount, now, now, now
                 ))
+
+        # Enforce RM 4K amount cap per unit
+        unit_txns = all_transactions[unit_start_idx:]
+        total_amount = sum(t[4] for t in unit_txns)
+        if total_amount > 4000:
+            scale = 4000.0 / total_amount
+            for j in range(unit_start_idx, len(all_transactions)):
+                t = all_transactions[j]
+                all_transactions[j] = (t[0], t[1], t[2], t[3],
+                                       round(t[4] * scale, 2),
+                                       t[5], t[6], t[7])
 
     print(f"  Generated {len(all_transactions):,} transactions across {len(unit_ids)} units")
     print(f"  Avg per unit: {len(all_transactions) // len(unit_ids):,}")
@@ -363,7 +425,7 @@ def main():
     print(f"  Transactions  : {inserted:,}")
     print(f"  Date range    : {date_min} → {date_max}")
     print(f"  Avg per unit  : {inserted // len(unit_ids):,}")
-    print(f"  Amount range  : RM3 – RM35 (product-type based)")
+    print(f"  Amount range  : RM1 – RM10 (capped at RM4K per unit)")
     print(f"  Ref ID format : YYYYMMDDBANKCODExxOQR/ORMxxxxxxxxxxx")
     print("=" * 60)
     print("\nLogin: shop@utmduitnow.com / password")

@@ -49,6 +49,8 @@ export default function StatusDistributionChart({ data }) {
         outerRadius,
         percent,
     }) => {
+        if (percent === 0) return null;
+
         const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
         const x = cx + radius * Math.cos(-midAngle * (Math.PI / 180));
         const y = cy + radius * Math.sin(-midAngle * (Math.PI / 180));
@@ -58,7 +60,7 @@ export default function StatusDistributionChart({ data }) {
                 x={x}
                 y={y}
                 fill="white"
-                textAnchor={x > cx ? 'start' : 'end'}
+                textAnchor="middle"
                 dominantBaseline="central"
                 className="font-bold"
             >
@@ -74,9 +76,20 @@ export default function StatusDistributionChart({ data }) {
                     <ChartTooltip
                         content={
                             <ChartTooltipContent
-                                formatter={(value, name) => {
+                                formatter={(value, name, props) => {
                                     const percentage = ((value / total) * 100).toFixed(1);
-                                    return [`${value} (${percentage}%)`, name];
+                                    const color = props.payload.fill || props.color || props.payload.color;
+                                    return (
+                                        <>
+                                            <div className="h-2.5 w-2.5 shrink-0 rounded-[2px]" style={{ backgroundColor: color }} />
+                                            <div className="flex flex-1 justify-between leading-none items-center">
+                                                <span className="text-muted-foreground">{name}</span>
+                                                <span className="font-mono font-medium tabular-nums text-foreground ml-3">
+                                                    {value} ({percentage}%)
+                                                </span>
+                                            </div>
+                                        </>
+                                    );
                                 }}
                             />
                         }

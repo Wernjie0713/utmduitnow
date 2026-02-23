@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/Components/ui/label';
 import { DateRangePicker } from '@/Components/ui/date-range-picker';
 import UserAvatar from '@/Components/UserAvatar';
-import { Users, FileCheck, FileX, DollarSign, Download, Trophy, Medal, Award, ChevronDown, BarChart3, TrendingUp, PieChart } from 'lucide-react';
+import { Users, FileCheck, FileX, DollarSign, Download, Trophy, Medal, Award, ChevronDown, BarChart3, TrendingUp, PieChart, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -79,14 +79,46 @@ export default function Dashboard({
         fetchPeriodData();
     }, [selectedLeaderboardTab, selectedWeek, selectedMonth, viewMode, currentWeek, currentMonth]);
     
-    // Separate date range states for Leaderboard and Analytics
-    const [leaderboardDateRange, setLeaderboardDateRange] = useState({ from: undefined, to: undefined });
+    // Separate date range state for Analytics
     const [analyticsDateRange, setAnalyticsDateRange] = useState({ from: undefined, to: undefined });
-    
-    const [customData, setCustomData] = useState(null);
     const [analyticsCustomData, setAnalyticsCustomData] = useState(null);
-    const [isLoadingCustom, setIsLoadingCustom] = useState(false);
     const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
+
+    // Specific week/month specific analytics
+    const [selectedAnalyticsWeek, setSelectedAnalyticsWeek] = useState('17');
+    const [selectedAnalyticsMonth, setSelectedAnalyticsMonth] = useState('12');
+    const [analyticsSpecificData, setAnalyticsSpecificData] = useState(null);
+    const [isLoadingSpecificAnalytics, setIsLoadingSpecificAnalytics] = useState(false);
+
+    useEffect(() => {
+        if (selectedChartPeriod !== 'weekly' && selectedChartPeriod !== 'monthly') {
+            return;
+        }
+
+        const fetchSpecificAnalytics = async () => {
+            setIsLoadingSpecificAnalytics(true);
+            try {
+                const response = await axios.get(route('admin.dashboard.period'), {
+                    params: {
+                        period: selectedChartPeriod,
+                        value: selectedChartPeriod === 'weekly' ? selectedAnalyticsWeek : selectedAnalyticsMonth,
+                        mode: viewMode,
+                        include_analytics: 1
+                    }
+                });
+                if (response.data.analytics) {
+                    setAnalyticsSpecificData(response.data.analytics);
+                }
+            } catch (error) {
+                console.error("Error fetching analytics data:", error);
+                toast.error("Failed to fetch specific analytics data");
+            } finally {
+                setIsLoadingSpecificAnalytics(false);
+            }
+        };
+
+        fetchSpecificAnalytics();
+    }, [selectedChartPeriod, selectedAnalyticsWeek, selectedAnalyticsMonth, viewMode]);
 
     const getRankIcon = (rank) => {
         switch (rank) {
@@ -293,37 +325,6 @@ export default function Dashboard({
         window.location.href = route('admin.export') + '?' + params.toString();
     };
 
-    const fetchCustomRangeData = async () => {
-        if (!leaderboardDateRange || !leaderboardDateRange.from || !leaderboardDateRange.to) {
-            toast.error('Please select both start and end dates');
-            return;
-        }
-
-        if (leaderboardDateRange.from > leaderboardDateRange.to) {
-            toast.error('Start date must be before or equal to end date');
-            return;
-        }
-
-        setIsLoadingCustom(true);
-        try {
-            const response = await axios.get(route('admin.dashboard.custom'), {
-                params: {
-                    start_date: format(leaderboardDateRange.from, 'yyyy-MM-dd'),
-                    end_date: format(leaderboardDateRange.to, 'yyyy-MM-dd'),
-                    mode: viewMode,
-                }
-            });
-
-            setCustomData(response.data);
-            toast.success('Custom range data loaded successfully');
-        } catch (error) {
-            toast.error(error.response?.data?.message || 'Failed to load custom range data');
-            console.error('Error fetching custom range data:', error);
-        } finally {
-            setIsLoadingCustom(false);
-        }
-    };
-
     const fetchAnalyticsCustomData = async () => {
         if (!analyticsDateRange || !analyticsDateRange.from || !analyticsDateRange.to) {
             toast.error('Please select both start and end dates for analytics');
@@ -454,17 +455,6 @@ export default function Dashboard({
                                             <Download className="mr-2 h-4 w-4" />
                                             All-Time (Top 20)
                                         </DropdownMenuItem>
-                                        {customData && leaderboardDateRange && leaderboardDateRange.from && leaderboardDateRange.to && (
-                                            <DropdownMenuItem onClick={() => exportLeaderboard(
-                                                'custom',
-                                                20,
-                                                format(leaderboardDateRange.from, 'yyyy-MM-dd'),
-                                                format(leaderboardDateRange.to, 'yyyy-MM-dd')
-                                            )}>
-                                                <Download className="mr-2 h-4 w-4" />
-                                                Custom Range (Top 20)
-                                            </DropdownMenuItem>
-                                        )}
                                         <DropdownMenuItem onClick={() => exportLeaderboard('all')}>
                                             <Download className="mr-2 h-4 w-4" />
                                             All Periods (Top 20 Each)
@@ -475,11 +465,10 @@ export default function Dashboard({
                         </CardHeader>
                         <CardContent>
                             <Tabs defaultValue="weekly" value={selectedLeaderboardTab} onValueChange={setSelectedLeaderboardTab} className="w-full">
-                                <TabsList className="grid w-full grid-cols-4">
+                                <TabsList className="grid w-full grid-cols-3">
                                     <TabsTrigger value="weekly">Weekly</TabsTrigger>
                                     <TabsTrigger value="monthly">Monthly</TabsTrigger>
                                     <TabsTrigger value="all-time">All-Time</TabsTrigger>
-                                    <TabsTrigger value="custom">Custom</TabsTrigger>
                                 </TabsList>
 
                                 <TabsContents>
@@ -570,56 +559,6 @@ export default function Dashboard({
                                             ? renderLeaderboard(leaderboards?.allTime) 
                                             : renderEntrepreneurLeaderboard(entrepreneurLeaderboards?.allTime)}
                                     </TabsContent>
-
-                                    <TabsContent value="custom" className="mt-6">
-                                        <div className="space-y-4">
-                                            <div className="flex items-end gap-4">
-                                                <div className="flex-1">
-                                                    <Label className="mb-2 block">Select Date Range</Label>
-                                                    <DateRangePicker 
-                                                        value={leaderboardDateRange}
-                                                        onChange={setLeaderboardDateRange}
-                                                    />
-                                                </div>
-                                                <Button 
-                                                    onClick={fetchCustomRangeData}
-                                                    disabled={!leaderboardDateRange || !leaderboardDateRange.from || !leaderboardDateRange.to || isLoadingCustom}
-                                                >
-                                                    {isLoadingCustom ? 'Loading...' : 'Apply'}
-                                                </Button>
-                                            </div>
-                                            
-                                            {customData && (
-                                                <>
-                                                    <div className="mb-4">
-                                                        <h3 className="text-lg font-semibold">Custom Range</h3>
-                                                        <p className="text-sm text-gray-600">
-                                                            {leaderboardDateRange && leaderboardDateRange.from && leaderboardDateRange.to ? (
-                                                                `${format(leaderboardDateRange.from, 'PPP')} - ${format(leaderboardDateRange.to, 'PPP')}`
-                                                            ) : (
-                                                                'Date range selected'
-                                                            )}
-                                                        </p>
-                                                    </div>
-                                                    {viewMode === 'personal' 
-                                                        ? renderLeaderboard(customData.leaderboard) 
-                                                        : renderEntrepreneurLeaderboard(customData.leaderboard)}
-                                                </>
-                                            )}
-                                            
-                                            {!customData && (
-                                                <div className="text-center py-16 text-gray-500">
-                                                    <div className="flex flex-col items-center gap-4">
-                                                        <Trophy className="h-16 w-16 text-gray-300" />
-                                                        <div>
-                                                            <p className="text-lg font-medium text-gray-700">Select a date range</p>
-                                                            <p className="text-sm">Choose your start and end dates, then click Apply to view the leaderboard.</p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </TabsContent>
                                 </TabsContents>
                             </Tabs>
                         </CardContent>
@@ -640,6 +579,14 @@ export default function Dashboard({
                                     </CardDescription>
                                 </div>
                                 <div className="flex items-center gap-3">
+                                    {/* Loading Indicator */}
+                                    {(isLoadingSpecificAnalytics || isLoadingAnalytics) && (
+                                        <div className="flex items-center gap-2 text-sm text-gray-500 mr-2">
+                                            <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                                            <span className="hidden sm:inline">Loading data...</span>
+                                        </div>
+                                    )}
+
                                     {/* Custom Date Range Picker for Analytics */}
                                     {['trends', 'faculty', 'years'].includes(selectedChart) && selectedChartPeriod === 'custom' && (
                                         <div className="flex items-end gap-2">
@@ -659,6 +606,50 @@ export default function Dashboard({
                                             </Button>
                                         </div>
                                     )}
+                                    
+                                    {/* Specific Week Selector for Analytics */}
+                                    {['trends', 'faculty', 'years'].includes(selectedChart) && selectedChartPeriod === 'weekly' && (
+                                        <Select value={selectedAnalyticsWeek} onValueChange={setSelectedAnalyticsWeek} disabled={isLoadingSpecificAnalytics}>
+                                            <SelectTrigger className="w-[180px]">
+                                                {isLoadingSpecificAnalytics ? <SelectValue placeholder="Loading..." /> : <SelectValue placeholder="Select Week" />}
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="1">Week 1 (Sep 1-7)</SelectItem>
+                                                <SelectItem value="2">Week 2 (Sep 8-14)</SelectItem>
+                                                <SelectItem value="3">Week 3 (Sep 15-21)</SelectItem>
+                                                <SelectItem value="4">Week 4 (Sep 22-28)</SelectItem>
+                                                <SelectItem value="5">Week 5 (Sep 29-Oct 5)</SelectItem>
+                                                <SelectItem value="6">Week 6 (Oct 6-12)</SelectItem>
+                                                <SelectItem value="7">Week 7 (Oct 13-19)</SelectItem>
+                                                <SelectItem value="8">Week 8 (Oct 20-26)</SelectItem>
+                                                <SelectItem value="9">Week 9 (Oct 27-Nov 2)</SelectItem>
+                                                <SelectItem value="10">Week 10 (Nov 3-9)</SelectItem>
+                                                <SelectItem value="11">Week 11 (Nov 10-16)</SelectItem>
+                                                <SelectItem value="12">Week 12 (Nov 17-23)</SelectItem>
+                                                <SelectItem value="13">Week 13 (Nov 24-30)</SelectItem>
+                                                <SelectItem value="14">Week 14 (Dec 1-7)</SelectItem>
+                                                <SelectItem value="15">Week 15 (Dec 8-14)</SelectItem>
+                                                <SelectItem value="16">Week 16 (Dec 15-21)</SelectItem>
+                                                <SelectItem value="17">Week 17 (Dec 22-28)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+
+                                    {/* Specific Month Selector for Analytics */}
+                                    {['trends', 'faculty', 'years'].includes(selectedChart) && selectedChartPeriod === 'monthly' && (
+                                        <Select value={selectedAnalyticsMonth} onValueChange={setSelectedAnalyticsMonth} disabled={isLoadingSpecificAnalytics}>
+                                            <SelectTrigger className="w-[180px]">
+                                                {isLoadingSpecificAnalytics ? <SelectValue placeholder="Loading..." /> : <SelectValue placeholder="Select Month" />}
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="9">September 2025</SelectItem>
+                                                <SelectItem value="10">October 2025</SelectItem>
+                                                <SelectItem value="11">November 2025</SelectItem>
+                                                <SelectItem value="12">December 2025</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+
                                     {/* Time Period Dropdown - Only show for charts that support it */}
                                     {['trends', 'faculty', 'years'].includes(selectedChart) && (
                                         <Select value={selectedChartPeriod} onValueChange={setSelectedChartPeriod}>
@@ -702,7 +693,9 @@ export default function Dashboard({
                                         data={
                                             selectedChartPeriod === 'custom' && analyticsCustomData
                                                 ? analyticsCustomData.analytics?.trends || []
-                                                : analyticsData?.trends?.[selectedChartPeriod] || []
+                                                : (selectedChartPeriod === 'weekly' || selectedChartPeriod === 'monthly') && analyticsSpecificData
+                                                    ? analyticsSpecificData.trends || []
+                                                    : analyticsData?.trends?.[selectedChartPeriod] || []
                                         }
                                         period={selectedChartPeriod}
                                     />
@@ -713,7 +706,9 @@ export default function Dashboard({
                                         data={
                                             selectedChartPeriod === 'custom' && analyticsCustomData
                                                 ? analyticsCustomData.analytics?.faculty || []
-                                                : analyticsData?.faculty?.[selectedChartPeriod] || []
+                                                : (selectedChartPeriod === 'weekly' || selectedChartPeriod === 'monthly') && analyticsSpecificData
+                                                    ? analyticsSpecificData.faculty || []
+                                                    : analyticsData?.faculty?.[selectedChartPeriod] || []
                                         }
                                         period={selectedChartPeriod}
                                     />
@@ -730,7 +725,9 @@ export default function Dashboard({
                                         data={
                                             selectedChartPeriod === 'custom' && analyticsCustomData
                                                 ? analyticsCustomData.analytics?.years || []
-                                                : analyticsData?.years?.[selectedChartPeriod] || []
+                                                : (selectedChartPeriod === 'weekly' || selectedChartPeriod === 'monthly') && analyticsSpecificData
+                                                    ? analyticsSpecificData.years || []
+                                                    : analyticsData?.years?.[selectedChartPeriod] || []
                                         }
                                         period={selectedChartPeriod}
                                     />

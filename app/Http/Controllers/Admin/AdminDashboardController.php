@@ -15,6 +15,7 @@ use App\Helpers\CompetitionWeekHelper;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class AdminDashboardController extends Controller
@@ -35,16 +36,18 @@ class AdminDashboardController extends Controller
      */
     public function index(Request $request)
     {
-        // Get statistics
-        $stats = [
-            'total_users' => User::whereHas('roles', function ($q) {
-                $q->where('name', 'student');
-            })->count(),
-            'total_transactions' => Transaction::where('status', 'approved')->count(),
-            'pending_transactions' => Transaction::where('status', 'pending')->count(),
-            'rejected_transactions' => Transaction::where('status', 'rejected')->count(),
-            'total_amount' => Transaction::where('status', 'approved')->sum('amount'),
-        ];
+        // Get statistics (cached for 10 minutes)
+        $stats = Cache::remember('admin:dashboard_stats', now()->addHours(2), function () {
+            return [
+                'total_users' => User::whereHas('roles', function ($q) {
+                    $q->where('name', 'student');
+                })->count(),
+                'total_transactions' => Transaction::where('status', 'approved')->count(),
+                'pending_transactions' => Transaction::where('status', 'pending')->count(),
+                'rejected_transactions' => Transaction::where('status', 'rejected')->count(),
+                'total_amount' => Transaction::where('status', 'approved')->sum('amount'),
+            ];
+        });
 
         // Get leaderboard data
         $weeklyLeaderboard = $this->leaderboardService->getWeeklyLeaderboard();
@@ -86,11 +89,13 @@ class AdminDashboardController extends Controller
                     'all_time' => $this->analyticsService->getYearParticipation('all_time'),
                 ],
             ],
-            'entrepreneurStats' => [
-                'total_units' => EntrepreneurUnit::count(),
-                'total_transactions' => EntrepreneurTransaction::count(),
-                'total_amount' => EntrepreneurTransaction::sum('amount'),
-            ],
+            'entrepreneurStats' => Cache::remember('admin:entrepreneur_stats', now()->addHours(2), function () {
+                return [
+                    'total_units' => EntrepreneurUnit::count(),
+                    'total_transactions' => EntrepreneurTransaction::count(),
+                    'total_amount' => EntrepreneurTransaction::sum('amount'),
+                ];
+            }),
             'entrepreneurLeaderboards' => [
                 'weekly' => $entrepreneurWeeklyLeaderboard,
                 'monthly' => $entrepreneurMonthlyLeaderboard,
@@ -147,29 +152,57 @@ class AdminDashboardController extends Controller
             'period' => 'required|in:weekly,monthly',
             'value' => 'required|numeric',
             'mode' => 'nullable|in:personal,entrepreneur',
+            'include_analytics' => 'nullable|boolean',
         ]);
 
         $period = $request->input('period');
         $value = $request->input('value');
         $mode = $request->input('mode', 'personal');
         $year = $request->input('year', 2025); // defaulting to competition year
+        $includeAnalytics = $request->boolean('include_analytics', false);
+
+        $analyticsData = null;
 
         if ($period === 'weekly') {
             if ($mode === 'entrepreneur') {
                 $leaderboard = $this->entrepreneurLeaderboardService->getWeekLeaderboard($value);
             } else {
                 $leaderboard = $this->leaderboardService->getWeekLeaderboard($value);
+
+                if ($includeAnalytics) {
+                    $dates = CompetitionWeekHelper::getWeekBoundaries($value);
+                    if ($dates) {
+                        $start = $dates['start']->format('Y-m-d');
+                        $end = $dates['end']->format('Y-m-d');
+                        $analyticsData = [
+                            'trends' => $this->analyticsService->getTransactionTrendsCustom($start, $end),
+                            'faculty' => $this->analyticsService->getFacultyComparisonCustom($start, $end),
+                            'years' => $this->analyticsService->getYearParticipationCustom($start, $end),
+                        ];
+                    }
+                }
             }
         } else { // monthly
             if ($mode === 'entrepreneur') {
                 $leaderboard = $this->entrepreneurLeaderboardService->getMonthlyLeaderboard($value, $year);
             } else {
                 $leaderboard = $this->leaderboardService->getMonthlyLeaderboard($value, $year);
+
+                if ($includeAnalytics) {
+                    $startDate = \Carbon\Carbon::create($year, $value, 1)->startOfMonth()->format('Y-m-d');
+                    $endDate = \Carbon\Carbon::create($year, $value, 1)->endOfMonth()->format('Y-m-d');
+                    $analyticsData = [
+                        'trends' => $this->analyticsService->getTransactionTrendsCustom($startDate, $endDate),
+                        'faculty' => $this->analyticsService->getFacultyComparisonCustom($startDate, $endDate),
+                        'years' => $this->analyticsService->getYearParticipationCustom($startDate, $endDate),
+                    ];
+                }
             }
         }
 
         return response()->json([
             'leaderboard' => $leaderboard,
+            'analytics' => $analyticsData,
         ]);
     }
 

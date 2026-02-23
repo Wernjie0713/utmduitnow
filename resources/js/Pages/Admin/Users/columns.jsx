@@ -11,8 +11,7 @@ const columnLabels = {
     duitnow_id: "DuitNow ID",
     faculty: "Faculty",
     year_of_study: "Year of Study",
-    email_verified_at: "Email Verified",
-    created_at: "Registered At"
+    email_verified_at: "Email Verified"
 };
 
 export const columns = [
@@ -115,21 +114,6 @@ export const columns = [
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
             ) : (
                 <XCircle className="h-5 w-5 text-red-600" />
-            );
-        },
-    },
-    {
-        accessorKey: "created_at",
-        header: "Registered",
-        meta: {
-            label: columnLabels.created_at
-        },
-        cell: ({ row }) => {
-            const date = new Date(row.getValue("created_at"));
-            return (
-                <span className="text-sm text-gray-500" title={date.toLocaleString()}>
-                    {formatDistanceToNow(date, { addSuffix: true })}
-                </span>
             );
         },
     },

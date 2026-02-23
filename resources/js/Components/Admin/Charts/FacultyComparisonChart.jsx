@@ -28,8 +28,8 @@ export default function FacultyComparisonChart({ data, period }) {
         <ChartContainer config={chartConfig} className="h-[350px] w-full">
             <BarChart
                 data={data}
-                layout="horizontal"
-                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                layout="vertical"
+                margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
             >
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                 <XAxis type="number" />
@@ -39,6 +39,7 @@ export default function FacultyComparisonChart({ data, period }) {
                     tickLine={false}
                     axisLine={false}
                     tickMargin={10}
+                    interval={0}
                 />
                 <ChartTooltip
                     content={

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\EntrepreneurTransaction;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class EntrepreneurLeaderboardService
@@ -51,49 +52,55 @@ class EntrepreneurLeaderboardService
 
     protected function getLeaderboard($periodType, $startDate = null, $endDate = null)
     {
-        $query = EntrepreneurTransaction::query()
-            ->with(['entrepreneurUnit' => function ($query) {
-                $query->withCount('teamMembers');
-            }]);
+        $cacheKey = 'entrepreneur_leaderboard:' . $periodType
+            . ':' . ($startDate ? $startDate->toDateTimeString() : 'null')
+            . ':' . ($endDate ? $endDate->toDateTimeString() : 'null');
 
-        if ($startDate && $endDate) {
-            $query->whereBetween('transaction_date', [
-                $startDate->toDateString(),
-                $endDate->toDateString(),
-            ]);
-        } elseif ($startDate) {
-            $query->where('transaction_date', '>=', $startDate->toDateString());
-        }
+        return Cache::remember($cacheKey, now()->addHours(2), function () use ($startDate, $endDate) {
+            $query = EntrepreneurTransaction::query()
+                ->with(['entrepreneurUnit' => function ($query) {
+                    $query->withCount('teamMembers');
+                }]);
 
-        $leaderboard = $query
-            ->select(
-                'entrepreneur_unit_id',
-                DB::raw('COUNT(*) as transaction_count'),
-                DB::raw('SUM(amount) as total_amount'),
-                DB::raw('MIN(generated_at) as first_transaction_at')
-            )
-            ->groupBy('entrepreneur_unit_id')
-            ->orderByDesc('transaction_count')
-            ->orderBy('first_transaction_at', 'asc')
-            ->get();
-
-        // Add rank with tie handling
-        $rank = 1;
-        $previousCount = null;
-        $previousRank = 1;
-
-        foreach ($leaderboard as $entry) {
-            if ($previousCount === $entry->transaction_count) {
-                $entry->rank = $previousRank;
-            } else {
-                $entry->rank = $rank;
-                $previousRank = $rank;
+            if ($startDate && $endDate) {
+                $query->whereBetween('transaction_date', [
+                    $startDate->toDateString(),
+                    $endDate->toDateString(),
+                ]);
+            } elseif ($startDate) {
+                $query->where('transaction_date', '>=', $startDate->toDateString());
             }
-            $previousCount = $entry->transaction_count;
-            $rank++;
-        }
 
-        return $leaderboard;
+            $leaderboard = $query
+                ->select(
+                    'entrepreneur_unit_id',
+                    DB::raw('COUNT(*) as transaction_count'),
+                    DB::raw('SUM(amount) as total_amount'),
+                    DB::raw('MIN(generated_at) as first_transaction_at')
+                )
+                ->groupBy('entrepreneur_unit_id')
+                ->orderByDesc('transaction_count')
+                ->orderBy('first_transaction_at', 'asc')
+                ->get();
+
+            // Add rank with tie handling
+            $rank = 1;
+            $previousCount = null;
+            $previousRank = 1;
+
+            foreach ($leaderboard as $entry) {
+                if ($previousCount === $entry->transaction_count) {
+                    $entry->rank = $previousRank;
+                } else {
+                    $entry->rank = $rank;
+                    $previousRank = $rank;
+                }
+                $previousCount = $entry->transaction_count;
+                $rank++;
+            }
+
+            return $leaderboard;
+        });
     }
 
     public function getUnitPosition($unitId, $periodType, $month = null, $year = null, $week = null)
