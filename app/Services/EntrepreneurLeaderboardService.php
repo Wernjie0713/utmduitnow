@@ -174,6 +174,9 @@ class EntrepreneurLeaderboardService
 
         $total = $leaderboard->count();
         $data = $leaderboard->slice(($page - 1) * $perPage, $perPage)->values();
+        $data->load(['entrepreneurUnit' => function ($q) {
+            $q->with('manager')->withCount('teamMembers');
+        }]);
 
         return [
             'data' => $data,

@@ -44,6 +44,7 @@ export default function FullRankings({ auth }) {
     const [totalPages, setTotalPages] = useState(1);
     const [totalRecords, setTotalRecords] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
+    const [hasLoaded, setHasLoaded] = useState(false);
     
     const getRankIcon = (rank) => {
         switch (rank) {
@@ -72,8 +73,19 @@ export default function FullRankings({ auth }) {
     };
     
     useEffect(() => {
-        fetchData();
-    }, [pagination.pageIndex, pagination.pageSize, search, period, selectedWeek, selectedMonth]);
+        if (hasLoaded) {
+            fetchData();
+        }
+    }, [pagination.pageIndex, pagination.pageSize, search]);
+
+    const handleLoadData = () => {
+        setHasLoaded(true);
+        if (pagination.pageIndex === 0) {
+            fetchData();
+        } else {
+            setPagination(prev => ({ ...prev, pageIndex: 0 }));
+        }
+    };
     
     const fetchData = async () => {
         setIsLoading(true);
@@ -110,6 +122,7 @@ export default function FullRankings({ auth }) {
     
     const handleSearch = () => {
         setSearch(searchValue);
+        setHasLoaded(true);
         setPagination(prev => ({ ...prev, pageIndex: 0 }));
     };
 
@@ -122,6 +135,7 @@ export default function FullRankings({ auth }) {
     const handleClearSearch = () => {
         setSearchValue('');
         setSearch('');
+        setHasLoaded(true);
         setPagination(prev => ({ ...prev, pageIndex: 0 }));
     };
 
@@ -165,6 +179,8 @@ export default function FullRankings({ auth }) {
                     <div className="bg-white rounded-lg shadow-sm p-6">
                             <Tabs value={period} onValueChange={(value) => {
                                 setPeriod(value);
+                                setHasLoaded(false);
+                                setData([]);
                                 setPagination({ pageIndex: 0, pageSize: 10 });
                             }}>
                                 <div className="mb-6">
@@ -290,7 +306,7 @@ export default function FullRankings({ auth }) {
                                         <div className="flex items-center gap-2 justify-end sm:justify-start">
                                             {/* Week/Month Selector */}
                                             {period === 'weekly' && (
-                                                <Select value={selectedWeek} onValueChange={setSelectedWeek}>
+                                                <Select value={selectedWeek} onValueChange={(val) => { setSelectedWeek(val); setHasLoaded(false); setData([]); }}>
                                                     <SelectTrigger className="w-[180px]">
                                                         <SelectValue placeholder="Select Week" />
                                                     </SelectTrigger>
@@ -317,7 +333,7 @@ export default function FullRankings({ auth }) {
                                             )}
 
                                             {period === 'monthly' && (
-                                                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                                                <Select value={selectedMonth} onValueChange={(val) => { setSelectedMonth(val); setHasLoaded(false); setData([]); }}>
                                                     <SelectTrigger className="w-[180px]">
                                                         <SelectValue placeholder="Select Month" />
                                                     </SelectTrigger>
@@ -329,6 +345,13 @@ export default function FullRankings({ auth }) {
                                                     </SelectContent>
                                                 </Select>
                                             )}
+                                            
+                                            <Button 
+                                                onClick={handleLoadData}
+                                                className="bg-primary text-white"
+                                            >
+                                                Load Data
+                                            </Button>
 
                                             {/* Rows per page */}
                                             <Select

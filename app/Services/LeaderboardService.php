@@ -300,6 +300,7 @@ class LeaderboardService
         // Manual pagination
         $total = $leaderboard->count();
         $data = $leaderboard->slice(($page - 1) * $perPage, $perPage)->values();
+        $data->load('user.faculty');
 
         return [
             'data' => $data,
